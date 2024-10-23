@@ -1,7 +1,7 @@
 """ Training package """
 
-from trainers.xla_hlm_trainer import XLAHLmTrainer
+from trainers.xla_lm_trainer import XLALmTrainer
 
 TRAINER_DICT = {
-    "XLAHLmTrainer": XLAHLmTrainer,
+    "XLALmTrainer": XLALmTrainer,
 }
