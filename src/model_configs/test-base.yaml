@@ -17,7 +17,9 @@ num_layers: 4
 hidden_act: silu
 norm_eps: 0.00001
 
-rope_fraction: 2
+rope_fraction: 1
 rope_base: 10000
+
+ignore_segment_ids: false
 
 gradient_checkpointing: false

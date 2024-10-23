@@ -1,7 +1,7 @@
 
-model_type: hlm
+model_type: base
 architectures: [
-    HLmModel
+    BaseLmModel
 ]
 
 max_sequence_length: 1024
@@ -11,22 +11,15 @@ mlp_size: 2048
 
 attention_head_size: 64
 num_attention_heads: 12
-num_iaf_attention_heads: 4
-use_register: true
 
-num_layers: 48
-num_decoder_layers: 8
+num_layers: 12
 
 hidden_act: silu
 norm_eps: 0.00001
 
-rope_fraction: 2
+rope_fraction: 1
 rope_base: 10000
 
-z_size: 384
-z_mlp_mult: 2
-
-z_output_layers: 4
+ignore_segment_ids: true
 
 gradient_checkpointing: false
-reshard_after_forward: false
