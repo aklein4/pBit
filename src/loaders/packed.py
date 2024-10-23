@@ -43,7 +43,7 @@ class PackedCollator:
         out = torch.nn.utils.rnn.pad_sequence(
             input_ids,
             batch_first=True,
-            padding_value=self.pad_token_id
+            padding_value=constants.GPT2_PAD_TOKEN
         )
         seg_out = torch.nn.utils.rnn.pad_sequence(
             seg_ids,
