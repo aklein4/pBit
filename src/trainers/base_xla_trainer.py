@@ -3,18 +3,16 @@ from typing import Optional
 import torch
 
 import torch_xla.core.xla_model as xm
-from torch_xla.amp import autocast, syncfree
+from torch_xla.amp import autocast
 
 import os
 import numpy as np
-import json
 
 import wandb
 import huggingface_hub as hf
 
 import utils.constants as constants
 from utils.data_utils import DotDict
-from utils.optimization_utils import LowPrecisionAdafactor
 from utils.logging_utils import LogSection, log_print, log_master_print
 
 
@@ -79,7 +77,6 @@ class BaseXLATrainer:
         self,
         model,
         optimizer,
-        lr_scheduler,
         step
     ):
         if self.debug or not constants.XLA_MAIN():
@@ -103,7 +100,6 @@ class BaseXLATrainer:
             }
             if self.save_optimizer:
                 ckpt["optimizer"] = optimizer.state_dict()
-                ckpt["lr_scheduler"] = lr_scheduler.state_dict()
 
             xm.save(ckpt, ckpt_path)
 
@@ -121,39 +117,7 @@ class BaseXLATrainer:
         
 
     def get_optimizer(self, model):
-        return LowPrecisionAdafactor(
-            model.parameters(), lr=self.start_lr,
-            **self.optimizer_kwargs
-        )
-        # return syncfree.AdamW(
-        #     model.parameters(), lr=self.start_lr,
-        #     **self.optimizer_kwargs
-        # )
-
-
-    def get_scheduler(self, optimizer):
-
-        warmup_scheduler = torch.optim.lr_scheduler.LinearLR(
-            optimizer,
-            start_factor=1e-10,
-            end_factor=1.0,
-            total_iters=self.warmup_steps
-        )
-
-        if self.lr_steps is None or self.end_lr is None:
-            assert self.lr_steps is None and self.end_lr is None, "Both lr_steps and end_lr must both be defined or neither!"
-            return warmup_scheduler
-        
-        cosine_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-            optimizer,
-            self.lr_steps - self.warmup_steps,
-            self.end_lr,
-        )
-
-        return torch.optim.lr_scheduler.SequentialLR(
-            optimizer, [warmup_scheduler, cosine_scheduler],
-            milestones=[self.warmup_steps]
-        )
+        raise NotImplementedError("get_optimizer not implemented yet!")
 
 
     def train(
@@ -169,7 +133,6 @@ class BaseXLATrainer:
 
         # init training objs
         optimizer = self.get_optimizer(model)
-        lr_scheduler = self.get_scheduler(optimizer)
 
         # init loop vars
         curr_step = 0
@@ -208,14 +171,12 @@ class BaseXLATrainer:
             for mini_batch_id, mini_batch in enumerate(mini_batches):
 
                 # get results from train step
-                
-                # fsdp handles autocast
-                # with autocast(constants.XLA_DEVICE()):
-                results = self.train_step(
-                    curr_step,
-                    model,
-                    *mini_batch
-                )
+                with autocast(constants.XLA_DEVICE()):
+                    results = self.train_step(
+                        curr_step,
+                        model,
+                        *mini_batch
+                    )
 
                 # scale results for accumulation
                 # reductions are done by averaging across devices, summing across mini batches
@@ -237,41 +198,43 @@ class BaseXLATrainer:
                     xm.mark_step()
 
             # # perform a single optimizer step
-            # if self.clip_grad_norm is not None:
-            #     model.clip_grad_norm_(self.clip_grad_norm)
             xm.optimizer_step(optimizer)
-            # optimizer.step()
             optimizer.zero_grad(set_to_none=True)
 
-            # update lr
-            self.log.lr = lr_scheduler.get_last_lr()[0]
-            lr_scheduler.step()
-
-            # update tracking
-            curr_step += 1
-            step_tracker.add(1)
-            self.log.steps_completed = curr_step
-            
-            seen_tokens += self.bs * self.sequence_length
-            token_tracker.add(self.bs * self.sequence_length)
-            self.log.seen_tokens = seen_tokens
-
             def _post_step():
+
+                # update tracking
+                curr_step += 1
+                step_tracker.add(1)
+                self.log.steps_completed = curr_step
+                
+                seen_tokens += self.bs * self.sequence_length
+                token_tracker.add(self.bs * self.sequence_length)
+                self.log.seen_tokens = seen_tokens
 
                 # log
                 for k, v in results_accum.items():
                     r = xm.mesh_reduce(f"{k}_reduce", v.item(), np.mean)
                     self.log[k] = r
+                
+                # log optimizer info
+                if hasattr(optimizer, "get_log_info"):
+                    opt_log = optimizer.get_log_info()
+                    
+                    for k, v in opt_log.items():
+                        if isinstance(v, torch.Tensor):
+                            self.log[k] = v.item()
+                        else:
+                            self.log[k] = v
 
                 # print update
                 msg = [
                     f"Step {curr_step}",
-                    f"LR = {self.log.lr:.2e}",
                     f"Loss = {self.log.loss:.4f}",
                     f"{step_tracker.rate():.2f} steps/s",
                     f"{round(3600*token_tracker.rate()):_} tok/h"
                 ]
-                log_master_print("{: >15}{: >20}{: >20}{: >20}{: >23}".format(*msg))
+                log_master_print("{: >15}{: >20}{: >20}{: >23}".format(*msg))
             
                 # save
                 self.log_step()
@@ -279,7 +242,6 @@ class BaseXLATrainer:
                     self.save_checkpoint(
                         model,
                         optimizer,
-                        lr_scheduler,
                         curr_step
                     )
             
@@ -289,7 +251,6 @@ class BaseXLATrainer:
         self.save_checkpoint(
             model,
             optimizer,
-            lr_scheduler,
             curr_step
         )
     

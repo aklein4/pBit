@@ -9,7 +9,6 @@ from transformers.modeling_utils import PretrainedConfig, PreTrainedModel
 
 
 from utils.logging_utils import log_print
-from utils.model_utils import apply_fsdp
 import utils.constants as constants
 
 
@@ -26,7 +25,6 @@ class XLAConfig(PretrainedConfig):
         eos_token_id=None,
         pad_token_id=None,
         gradient_checkpointing=False,
-        reshard_after_forward=False,
         *args,
         **kwargs,
     ):
@@ -51,8 +49,6 @@ class XLAConfig(PretrainedConfig):
 
         self.vocab_size = vocab_size
         self.max_sequence_length = max_sequence_length
-
-        self.reshard_after_forward = reshard_after_forward
 
         # requires workaround
         tmp_gradient_checkpointing = gradient_checkpointing
@@ -104,7 +100,3 @@ class XLAModel(PreTrainedModel):
             return
 
         super().init_weights()
-
-    
-    def init_fsdp(self):
-        return apply_fsdp(self, False)

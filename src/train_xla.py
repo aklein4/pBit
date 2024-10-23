@@ -5,7 +5,6 @@ import torch_xla.distributed.xla_multiprocessing as xmp
 
 import os
 import argparse
-import huggingface_hub as hf
 
 from loaders import get_loader
 from models import CONFIG_DICT, MODEL_DICT
@@ -37,16 +36,11 @@ def _mp_fn(index, args):
     model_type = model_config.pop("model_type")
     model_type_config = CONFIG_DICT[model_type](**model_config)
     model = MODEL_DICT[model_type](model_type_config)
-    # model = model.init_fsdp()
-    model = model.to(torch.bfloat16)
-    log_print("Model Loaded!")
 
-    """ FSDP handles this """
+    log_print("Syncing model...")
     model = model.to(constants.XLA_DEVICE())
     if not args.debug:
-        log_print("Syncing model...")
         xm.broadcast_master_param(model)
-        log_print("Model Synced!")
 
     log_print("Loading data...")
     loader = get_loader(
@@ -59,7 +53,6 @@ def _mp_fn(index, args):
         },
         train_config["stream_dataset"]
     )
-    log_print("Data Loaded!")
 
     log_print("Loading trainer...")
     trainer_type = train_config["trainer_type"]
@@ -69,8 +62,8 @@ def _mp_fn(index, args):
         train_config,
         debug=args.debug
     )
-    log_print("Trainer Loaded!")
 
+    log_print("Entering trainer...")
     trainer.train(
         model,
         loader
@@ -81,12 +74,6 @@ if __name__ == '__main__':
   
     # setup PJRT runtime
     os.environ['PJRT_DEVICE'] = 'TPU'
-    # os.environ['XLA_NO_SPECIAL_SCALARS'] = '1'
-
-    # debugging
-    # os.environ['PT_XLA_DEBUG'] = '1'
-    # os.environ['PT_XLA_DEBUG_LEVEL'] = '1'
-    # os.environ['XLA_HLO_DEBUG'] = '1'
 
     # handle arguments
     args = argparse.ArgumentParser()
