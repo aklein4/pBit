@@ -1,0 +1,35 @@
+trainer_type: XLAHLmTrainer
+
+collator_type: seq2seq
+dataset: fw-45b
+stream_dataset: true
+
+sequence_length: 256
+
+bs: 2048
+mini_bs: 32
+
+warmup_steps: 2000
+lr_steps: 20000
+
+checkpoint_interval: 2000
+save_optimizer: false
+
+start_lr: 0.0004
+end_lr: 0.00004
+
+optimizer_kwargs:
+    beta1: 0.9
+    weight_decay: 0.1
+
+    scale_parameter: false
+    relative_step: false
+
+kl_w: 1.0
+kl_smooth_w: 0.1
+kl_collapse_w: 1.0
+token_w: 50.0
+
+collapse_steps: null
+
+clip_prob: 0.75

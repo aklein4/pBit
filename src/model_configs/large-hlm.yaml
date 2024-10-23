@@ -1,0 +1,32 @@
+
+model_type: hlm
+architectures: [
+    HLmModel
+]
+
+max_sequence_length: 1024
+
+hidden_size: 1024
+mlp_size: 2816
+
+attention_head_size: 64
+num_attention_heads: 16
+num_iaf_attention_heads: 4
+use_register: true
+
+num_layers: 48
+num_decoder_layers: 8
+
+hidden_act: silu
+norm_eps: 0.00001
+
+rope_fraction: 2
+rope_base: 10000
+
+z_size: 512
+z_mlp_mult: 2
+
+z_output_layers: 4
+
+gradient_checkpointing: true
+reshard_after_forward: true
