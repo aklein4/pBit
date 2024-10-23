@@ -205,16 +205,16 @@ class BaseXLATrainer:
             xm.optimizer_step(optimizer)
             optimizer.zero_grad(set_to_none=True)
 
-            def _post_step():
+            # update tracking
+            curr_step += 1
+            step_tracker.add(1)
+            self.log.steps_completed = curr_step
+            
+            seen_tokens += self.bs * self.sequence_length
+            token_tracker.add(self.bs * self.sequence_length)
+            self.log.seen_tokens = seen_tokens
 
-                # update tracking
-                curr_step += 1
-                step_tracker.add(1)
-                self.log.steps_completed = curr_step
-                
-                seen_tokens += self.bs * self.sequence_length
-                token_tracker.add(self.bs * self.sequence_length)
-                self.log.seen_tokens = seen_tokens
+            def _post_step():
 
                 # log
                 for k, v in results_accum.items():
