@@ -28,18 +28,19 @@ def loss(
     """
     if shift:
         x = x[:, 1:]
-        logits = logits[:, :-1]
-    x = x.view(-1)
-    logits = logits.view(-1, logits.shape[-1])
+    seq_len = x.shape[-1]
 
-    # we assume logits are normalized, to save (quite a bit of) memory
-    ar = torch.arange(x.shape[0], device=x.device, dtype=x.dtype)
-    loss = -logits[ar, x].float()
+    ar = torch.arange(x.numel(), device=x.device, dtype=x.dtype)
+    ar_bs = ar // seq_len
+    ar_seq = ar % seq_len
+    
+    logp = logits[ar_bs, ar_seq, x.view(-1)].view(*x.shape)
+    loss = -logp.float()
 
     # mask padding tokens
     mask = x == ignore_index
     loss = torch.masked_fill(loss, mask, 0.0)
-    loss = loss.mean() / (~mask).float().mean()
+    loss = loss.sum() / (~mask).float().sum()
 
     return loss
 
@@ -65,13 +66,13 @@ def ppl(
     """
     if shift:
         x = x[:, 1:]
-        logits = logits[:, :-1]
-    x = x.view(-1)
-    logits = logits.view(-1, logits.shape[-1])
+    seq_len = x.shape[-1]
 
-    # we assume logits are normalized, to save (quite a bit of) memory
-    ar = torch.arange(x.shape[0], device=x.device, dtype=x.dtype)
-    logp = logits[ar, x].float()
+    ar = torch.arange(x.numel(), device=x.device, dtype=x.dtype)
+    ar_bs = ar // seq_len
+    ar_seq = ar % seq_len
+    
+    logp = logits[ar_bs, ar_seq, x.view(-1)].view(*x.shape).float()
 
     # mask padding tokens
     mask = x == ignore_index
@@ -134,13 +135,13 @@ def pcorr(
     """
     if shift:
         x = x[:, 1:]
-        logits = logits[:, :-1]
-    x = x.view(-1)
-    logits = logits.view(-1, logits.shape[-1])
+    seq_len = x.shape[-1]
 
-    # we assume logits are normalized, to save (quite a bit of) memory
-    ar = torch.arange(x.shape[0], device=x.device, dtype=x.dtype)
-    logp = logits[ar, x].float()
+    ar = torch.arange(x.numel(), device=x.device, dtype=x.dtype)
+    ar_bs = ar // seq_len
+    ar_seq = ar % seq_len
+    
+    logp = logits[ar_bs, ar_seq, x.view(-1)].view(*x.shape).float()
     p = torch.exp(logp)
 
     # mask padding tokens
