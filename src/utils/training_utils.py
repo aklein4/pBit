@@ -104,12 +104,13 @@ def acc(
     if shift:
         x, logits = x[:, 1:], logits[:, :-1]
 
+    mask = x == ignore_index
+
     corr = torch.logical_and(
         logits.argmax(-1) == x,
         ~mask
     ).float().sum()
 
-    mask = x == ignore_index
     return corr / (~mask).float().sum()
 
 
