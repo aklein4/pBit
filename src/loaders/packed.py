@@ -56,7 +56,7 @@ class PackedCollator:
             out = F.pad(
                 out,
                 (0, self.seq_length - out.shape[1]),
-                value=self.pad_token_id
+                value=constants.GPT2_PAD_TOKEN
             )
         elif out.shape[1] > self.seq_length:
             out = out[:, :self.seq_length]
@@ -65,7 +65,7 @@ class PackedCollator:
             seg_out = F.pad(
                 seg_out,
                 (0, self.seq_length - seg_out.shape[1]),
-                value=0
+                value=-1
             )
         elif seg_out.shape[1] > self.seq_length:
             seg_out = seg_out[:, :self.seq_length]
