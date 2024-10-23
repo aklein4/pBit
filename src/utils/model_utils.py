@@ -174,7 +174,7 @@ class RotaryAttention(nn.Module):
         # get output
         attn_output = torch.matmul(attn_weights, value_states)
         attn_output = attn_output.transpose(1, 2)
-        attn_output = attn_output.reshape(bsz, q_len, self.total_dim)
+        attn_output = attn_output.reshape(bsz, q_len, self.qkv_size)
 
         return self.O(attn_output)
 

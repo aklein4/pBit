@@ -2,12 +2,12 @@ import torch
 
 from transformers import AutoTokenizer
 
-from models.hlm import HLmConfig, HLmModel
+from models.base import BaseConfig, BaseLmModel
 from utils.config_utils import load_model_config
 import utils.constants as constants
 
 
-MODEL_CONFIG = 'test-hlm'
+MODEL_CONFIG = 'test-base'
 
 
 def main():
@@ -21,23 +21,18 @@ def main():
     assert tokenizer.eos_token_id == constants.GPT2_EOS_TOKEN
 
     x = tokenizer(["Hello, my dog is cute", "His dog is cute too", "All dogs are cute"], return_tensors="pt", padding="max_length", max_length=16).input_ids
-    mask = torch.ones_like(x).bool() # torch.randint_like(x, 2).bool()
-    mask[0, :3] = False
-    mask[1, :8] = False
+    seg_ids = torch.randint_like(x, 4)
 
     print("loading model...")
     config = load_model_config(MODEL_CONFIG)
-    model = HLmModel(HLmConfig(**config))
+    model = BaseLmModel(BaseConfig(**config))
 
-    print(f"Encoder: {sum([p.numel() for p in model.encoder.parameters()]):_}")
-    print(f"Generator: {sum([p.numel() for p in model.generator.parameters()]):_}")
-    print(f"Decoder: {sum([p.numel() for p in model.decoder.parameters()]):_}")
+    out = model(x, segment_ids=seg_ids)
+    out_noseg = model(x)
 
-    logits, kl, smooth_kl = model(x, mask)
-
-    print(logits.shape)
-    print(kl)
-    print(smooth_kl)
+    # print(out)
+    print(out.shape)
+    print((out - out_noseg).abs().max().item())
 
 
 if __name__ == '__main__':
