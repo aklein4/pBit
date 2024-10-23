@@ -12,6 +12,7 @@ import wandb
 import huggingface_hub as hf
 
 import utils.constants as constants
+from optimizers import OPTIMIZER_DICT
 from utils.data_utils import DotDict
 from utils.logging_utils import LogSection, log_print, log_master_print
 
@@ -117,7 +118,10 @@ class BaseXLATrainer:
         
 
     def get_optimizer(self, model):
-        raise NotImplementedError("get_optimizer not implemented yet!")
+        return OPTIMIZER_DICT[self.optimizer_type](
+            model.parameters(),
+            **self.optimizer_kwargs
+        )
 
 
     def train(

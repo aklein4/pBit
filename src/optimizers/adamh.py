@@ -7,7 +7,7 @@ import torch.nn.functional as F
 import math
 
 
-class Adah(torch.optim.Optimizer):
+class AdamH(torch.optim.Optimizer):
     """
     Parameters:
         params (`Iterable[nn.parameter.Parameter]`):
