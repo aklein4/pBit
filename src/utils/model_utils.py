@@ -164,7 +164,7 @@ class RotaryAttention(nn.Module):
             key_states, value_states = past_key_value.update(key_states, value_states, self.layer_idx)
 
         # attention
-        attn_weights = torch.matmul(query_states, key_states.transpose(2, 3)) / np.sqrt(self.head_dim)
+        attn_weights = torch.matmul(query_states, key_states.transpose(2, 3) / np.sqrt(self.head_dim)) 
         if attention_mask is not None:
             attn_weights = attn_weights + attention_mask
 

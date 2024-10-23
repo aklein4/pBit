@@ -14,6 +14,7 @@ from utils.model_utils import (
     RotaryAttention,
     GluMlp
 )
+import utils.constants as constants
 
 
 class BaseConfig(XLAConfig):
@@ -47,11 +48,11 @@ class BaseConfig(XLAConfig):
 
     def __init__(
         self,
-        hidden_size,
-        mlp_size,
-        attention_head_size,
-        num_attention_heads,
-        num_layers,
+        hidden_size=None,
+        mlp_size=None,
+        attention_head_size=None,
+        num_attention_heads=None,
+        num_layers=None,
         hidden_act=None,
         norm_eps=None,
         rope_fraction=None,
@@ -204,6 +205,7 @@ class BaseLmModel(XLAModel):
 
         # for training
         self.ignore_segment_ids = config.ignore_segment_ids
+        assert self.ignore_segment_ids is not None
 
         # Initialize weights and apply final processing
         self.post_init()
@@ -261,6 +263,9 @@ class BaseLmModel(XLAModel):
             attention_mask=attention_mask,
             kv=kv
         )
+
+        if constants.XLA_AVAILABLE:
+            out = out.to(torch.bfloat16)
 
         lm_logits = self.lm_head(out)
         lm_logits = F.log_softmax(lm_logits, dim=-1)

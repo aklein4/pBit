@@ -34,7 +34,7 @@ def loss(
 
     # we assume logits are normalized, to save (quite a bit of) memory
     ar = torch.arange(x.shape[0], device=x.device, dtype=x.dtype)
-    loss = -logits[ar, x]
+    loss = -logits[ar, x].float()
 
     # mask padding tokens
     mask = x == ignore_index
@@ -71,7 +71,7 @@ def ppl(
 
     # we assume logits are normalized, to save (quite a bit of) memory
     ar = torch.arange(x.shape[0], device=x.device, dtype=x.dtype)
-    logp = logits[ar, x]
+    logp = logits[ar, x].float()
 
     # mask padding tokens
     mask = x == ignore_index
@@ -140,7 +140,7 @@ def pcorr(
 
     # we assume logits are normalized, to save (quite a bit of) memory
     ar = torch.arange(x.shape[0], device=x.device, dtype=x.dtype)
-    logp = logits[ar, x]
+    logp = logits[ar, x].float()
     p = torch.exp(logp)
 
     # mask padding tokens
