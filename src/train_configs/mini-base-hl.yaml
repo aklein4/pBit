@@ -26,4 +26,4 @@ optimizer_kwargs:
     eps: 0.00000001
     weight_decay: 0.1
 
-    hyper_decay: true
+    hyper_decay: false
