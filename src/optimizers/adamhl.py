@@ -14,6 +14,8 @@ class AdamHL(torch.optim.Optimizer):
             Iterable of parameters to optimize or dictionaries defining parameter groups.
         lr0 (`float`, *optional*, defaults to 0.001):
             The learning rate to start at.
+        num_warmup_steps (`int`, *optional*, defaults to 0):
+            The number of steps to linearly increase the learning rate.
         la (`float`, *optional*, defaults to 0.001):
             The learning acceleration parameter, essentially the 'learning rate of the learning rate'.
         gamma (`float`, *optional*, defaults to 0.0):
@@ -30,6 +32,7 @@ class AdamHL(torch.optim.Optimizer):
         self,
         params: Iterable[nn.parameter.Parameter],
         lr0: float = 0.001,
+        num_warmup_steps: int = 0,
         la: float = 0.001,
         gamma: float = 0.0,
         betas: Tuple[float, float] = (0.9, 0.999),
@@ -51,6 +54,7 @@ class AdamHL(torch.optim.Optimizer):
         
         defaults = {
             "lr0": lr0,
+            "num_warmup_steps": num_warmup_steps,
             "la": la,
             "gamma": gamma,
             "betas": betas,
@@ -121,8 +125,11 @@ class AdamHL(torch.optim.Optimizer):
                 # Retrieve group vars
                 beta1, beta2 = group["betas"]
                 eps = group["eps"]
-                weight_decay = group["weight_decay"]
+                num_warmup_steps, weight_decay = group["num_warmup_steps"], group["weight_decay"]
                 la, gamma = group["la"], group["gamma"]
+
+                # get the warmup info
+                warmup_scale = min(1.0, state["step"] / max(1.0, num_warmup_steps))
 
                 # iterate step
                 state["step"] += 1
@@ -140,6 +147,7 @@ class AdamHL(torch.optim.Optimizer):
 
                 # calculate the current action
                 a = (momentum / denom) - (p * weight_decay)
+                a = warmup_scale * a
 
                 # get the hyper vector before p is updated
                 hyper_vec = (grad / denom) - (p * weight_decay)
@@ -162,7 +170,7 @@ class AdamHL(torch.optim.Optimizer):
                 state["action_history"].mul_(gamma).add_(a, alpha=(1.0 - gamma))
 
                 # update the learning rate logging info
-                logging_lr = (10 ** state["lr"])
+                logging_lr = warmup_scale * (10 ** state["lr"])
                 
                 self.mean_lr = (
                     self.mean_lr[0] + logging_lr.sum(),
