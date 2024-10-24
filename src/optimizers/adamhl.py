@@ -168,7 +168,7 @@ class AdamHL(torch.optim.Optimizer):
                     self.mean_lr[0] + logging_lr.sum(),
                     self.mean_lr[1] + logging_lr.numel()
                 )
-                self.mean_logging_lr = (
+                self.mean_log_lr = (
                     self.mean_log_lr[0] + logging_lr.log10().sum(),
                     self.mean_log_lr[1] + logging_lr.numel()
                 )
