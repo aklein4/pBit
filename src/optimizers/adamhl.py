@@ -26,6 +26,8 @@ class AdamHL(torch.optim.Optimizer):
             Adam's epsilon for numerical stability.
         weight_decay (`float`, *optional*, defaults to 0.0):
             Decoupled weight decay to apply.
+        hyper_decay (`bool`, *optional*, defaults to False):
+            Whether to decay the hypergradient or not.
     """
 
     def __init__(
@@ -38,6 +40,7 @@ class AdamHL(torch.optim.Optimizer):
         betas: Tuple[float, float] = (0.9, 0.999),
         eps: float = 1e-6,
         weight_decay: float = 0.0,
+        hyper_decay: bool = False,
     ):
         if lr0 <= 0.0:
             raise ValueError(f"Invalid starting learning rate: {lr0} - should be > 0.0")
@@ -60,6 +63,7 @@ class AdamHL(torch.optim.Optimizer):
             "betas": betas,
             "eps": eps,
             "weight_decay": weight_decay,
+            "hyper_decay": hyper_decay,
         }
         
         super().__init__(params, defaults)
@@ -127,6 +131,7 @@ class AdamHL(torch.optim.Optimizer):
                 eps = group["eps"]
                 num_warmup_steps, weight_decay = group["num_warmup_steps"], group["weight_decay"]
                 la, gamma = group["la"], group["gamma"]
+                hyper_decay = group["hyper_decay"]
 
                 # a switch for whether we are in warmup
                 # we use where operations to avoid xla recompilation
@@ -153,7 +158,9 @@ class AdamHL(torch.optim.Optimizer):
                 a = (momentum / denom) - (p * weight_decay)
 
                 # get the hyper vector before p is updated
-                hyper_vec = (grad / denom) - (p * weight_decay)
+                hyper_vec = (grad / denom)
+                if hyper_decay:
+                    hyper_vec = hyper_vec - (p * weight_decay)
 
                 # update the parameters, using the warmup switch
                 p.add_(
@@ -176,7 +183,7 @@ class AdamHL(torch.optim.Optimizer):
                 denom_hyper = torch.where(
                     warmup_switch,
                     torch.ones_like(denom_hyper),
-                    denom_hyper / math.sqrt(1.0 - beta2 ** (step - num_warmup_steps))
+                    denom_hyper / math.sqrt(max(0.0, 1.0 - beta2 ** (step - num_warmup_steps)))
                 )
 
                 # update the learning rate
