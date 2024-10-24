@@ -128,8 +128,12 @@ class AdamHL(torch.optim.Optimizer):
                 num_warmup_steps, weight_decay = group["num_warmup_steps"], group["weight_decay"]
                 la, gamma = group["la"], group["gamma"]
 
-                # get the warmup info
-                warmup_scale = min(1.0, state["step"] / max(1.0, num_warmup_steps))
+                # a switch for whether we are in warmup
+                # we use where operations to avoid xla recompilation
+                warmup_switch = torch.tensor(
+                    [state["step"] < num_warmup_steps],
+                    dtype=torch.bool, device=p.device
+                ).view(*[1 for _ in range(p.dim())])
 
                 # iterate step
                 state["step"] += 1
@@ -147,13 +151,19 @@ class AdamHL(torch.optim.Optimizer):
 
                 # calculate the current action
                 a = (momentum / denom) - (p * weight_decay)
-                a = warmup_scale * a
 
                 # get the hyper vector before p is updated
                 hyper_vec = (grad / denom) - (p * weight_decay)
 
                 # update the parameters, using the warmup switch
-                p.add_((10 ** state["lr"])* a)             
+                p.add_(
+                    torch.where(
+                        warmup_switch,
+                        torch.full_like(state["lr"], group["lr0"]) * float(step-1) / max(1.0, float(num_warmup_steps)),
+                        (10 ** state["lr"])
+                    )
+                    * a 
+                )             
 
                 # get the hypergradient
                 hyper_grad = state["action_history"] * hyper_vec
@@ -161,16 +171,31 @@ class AdamHL(torch.optim.Optimizer):
                 # update the hypergradient moving average, and get denom
                 state["exp_avg_sq_hyper"].mul_(beta2).addcmul_(hyper_grad, hyper_grad, value=(1.0 - beta2))
                 denom_hyper = state["exp_avg_sq_hyper"].sqrt().add_(eps)
-                denom_hyper = denom_hyper / math.sqrt(1.0 - beta2 ** step)
+                
+                # debias denom, using the warmup switch
+                denom_hyper = torch.where(
+                    warmup_switch,
+                    torch.ones_like(denom_hyper),
+                    denom_hyper / math.sqrt(1.0 - beta2 ** (step - num_warmup_steps))
+                )
 
                 # update the learning rate
                 state["lr"].add_(la * hyper_grad / denom_hyper)
 
                 # update the action history, using the warmup switch
-                state["action_history"].mul_(gamma).add_(a, alpha=(1.0 - gamma))
+                a_update = torch.where(
+                    warmup_switch,
+                    a * 0,
+                    a
+                )
+                state["action_history"].mul_(gamma).add_(a_update, alpha=(1.0 - gamma))
 
                 # update the learning rate logging info
-                logging_lr = warmup_scale * (10 ** state["lr"])
+                logging_lr = torch.where(
+                    warmup_switch,
+                    torch.full_like(state["lr"], group["lr0"]) * float(step-1) / max(1.0, float(num_warmup_steps)),
+                    (10 ** state["lr"])
+                )
                 
                 self.mean_lr = (
                     self.mean_lr[0] + logging_lr.sum(),
