@@ -24,8 +24,8 @@ def main():
         [p_h],
         lr0=0.25,
         num_warmup_steps=10,
-        la=0.02,
-        gamma=0.2,
+        la=0.2,
+        gamma=0.8,
         betas=(0.9, 0.999),
         eps=1e-6,
         weight_decay=0.1,
@@ -33,7 +33,7 @@ def main():
 
     for i in range(100):
 
-        loss = (torch.randn(3, 3) * (p_w + p_h)).sum()
+        loss = ((-1 + torch.randn(3, 3)) * (p_w + p_h)).sum()
         loss.backward()
 
         adamw.step()

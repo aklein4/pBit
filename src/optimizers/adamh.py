@@ -70,6 +70,7 @@ class AdamH(torch.optim.Optimizer):
         return {
             "mean_lr": self.mean_lr,
             "mean_log_lr": self.mean_log_lr,
+            "dot": self.dot,
             "max_lr": self.max_lr,
             "min_lr": self.min_lr,
         }
@@ -90,6 +91,7 @@ class AdamH(torch.optim.Optimizer):
         # logging info
         self.mean_lr = (0, 0)
         self.mean_log_lr = (0, 0)
+        self.dot = (0, 0)
         self.max_lr = None
         self.min_lr = None
 
@@ -174,6 +176,7 @@ class AdamH(torch.optim.Optimizer):
                     a * 0,
                     a
                 )
+                old_history = state["action_history"].clone()
                 state["action_history"].mul_(gamma).add_(a_update, alpha=(1.0 - gamma))
 
                 # update the learning rate logging info
@@ -192,6 +195,11 @@ class AdamH(torch.optim.Optimizer):
                     self.mean_log_lr[1] + log_lr.numel()
                 )
 
+                self.dot = (
+                    self.dot[0] + (old_history * hyper_grad).sum(),
+                    self.dot[1] + hyper_grad.numel()
+                )
+
                 if self.max_lr is None:
                     self.max_lr = log_lr.max()
                 else:
@@ -203,5 +211,6 @@ class AdamH(torch.optim.Optimizer):
 
         self.mean_lr = self.mean_lr[0] / self.mean_lr[1]
         self.mean_log_lr = 10 ** (self.mean_log_lr[0] / self.mean_log_lr[1])
+        self.dot = self.dot[0] / self.dot[1]
 
         return loss
