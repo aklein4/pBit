@@ -19,7 +19,7 @@ optimizer_kwargs:
 
     lr0: 0.0006
     
-    la: 0.0005
+    la: 0.005
     gamma: 0.9
 
     betas: [0.9, 0.95]

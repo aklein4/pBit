@@ -31,7 +31,7 @@ def main():
         weight_decay=0.1,
     )
 
-    for i in range(51):
+    for i in range(100):
 
         loss = (torch.randn(3, 3) * (p_w + p_h)).sum()
         loss.backward()
