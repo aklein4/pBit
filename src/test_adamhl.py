@@ -28,6 +28,7 @@ def main():
         betas=(0.9, 0.999),
         eps=1e-6,
         weight_decay=0.1,
+        num_warmup_steps=0
     )
 
     for i in range(100):
