@@ -150,17 +150,7 @@ class AdamHL(torch.optim.Optimizer):
                 denom = denom / math.sqrt(1.0 - beta2 ** step)
 
                 # get the update with weight decay
-                update_p = (momentum / denom) - (p * weight_decay)
-
-                # update the parameters, using the warmup switch
-                p.add_(
-                    torch.where(
-                        warmup_switch,
-                        torch.full_like(state["lr"], group["lr0"]) * float(step-1) / max(1.0, float(num_warmup_steps)),
-                        (10 ** state["lr"])
-                    )
-                    * update_p
-                )             
+                a = (momentum / denom) - (p * weight_decay)
 
                 # get the hypergradient
                 hyper_grad = state["action_history"] * grad
@@ -178,9 +168,17 @@ class AdamHL(torch.optim.Optimizer):
 
                 # update the learning rate
                 state["lr"].add_(la * hyper_grad / denom_hyper)
+                state["lr"] = state["lr"].clamp(max=(math.log10(group["lr0"])+1))
 
-                # get the action (with no decay)
-                a = momentum / denom
+                # update the parameters, using the warmup switch
+                p.add_(
+                    torch.where(
+                        warmup_switch,
+                        torch.full_like(state["lr"], group["lr0"]) * float(step-1) / max(1.0, float(num_warmup_steps)),
+                        (10 ** state["lr"])
+                    )
+                    * a
+                )             
 
                 # update the action history, using the warmup switch
                 a_update = torch.where(
