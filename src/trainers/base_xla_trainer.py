@@ -231,7 +231,7 @@ class BaseXLATrainer:
                             self.log[k] = v
 
                 # optimizer examples
-                if hasattr(optimizer, "get_examples"):
+                if constants.XLA_MAIN() and not self.debug and hasattr(optimizer, "get_examples"):
                     example_list = optimizer.get_examples().detach().cpu().tolist()
                     wandb.log(
                         {
