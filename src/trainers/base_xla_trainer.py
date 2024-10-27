@@ -238,7 +238,7 @@ class BaseXLATrainer:
                             "example_weights":
                             wandb.Table(
                                 columns=[str(i) for i in range(len(example_list))],
-                                data=example_list
+                                data=[example_list]
                             )
                         }
                     )
