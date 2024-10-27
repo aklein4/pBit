@@ -102,6 +102,7 @@ class AdamW(torch.optim.Optimizer):
             loss = closure()
 
         examples = []
+        grad_examples = []
 
         for group in self.param_groups:
             for p in group["params"]:
@@ -127,6 +128,7 @@ class AdamW(torch.optim.Optimizer):
                     )
 
                 examples.append(p.view(-1)[state["example_inds"]])
+                grad_examples.append(-grad.view(-1)[state["example_inds"]])
 
                 # update group's lr
                 group["lr"] = get_cosine_schedule_with_warmup_lr(
@@ -164,6 +166,12 @@ class AdamW(torch.optim.Optimizer):
                 if group["weight_decay"] > 0.0:
                     p.add_(p, alpha=(-group["lr"] * group["weight_decay"]))
 
-        self.examples = torch.cat(examples, dim=0)
+        self.examples = torch.stack(
+            [
+                torch.cat(examples, dim=0),
+                torch.cat(grad_examples, dim=0)
+            ],
+            dim=0
+        )
 
         return loss

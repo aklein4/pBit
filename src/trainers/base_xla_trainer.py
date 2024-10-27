@@ -17,6 +17,10 @@ from utils.data_utils import DotDict
 from utils.logging_utils import LogSection, log_print, log_master_print
 
 
+class LongTable(wandb.Table):
+    MAX_ROWS = 10000000
+
+
 class BaseXLATrainer:
 
     def __init__(
@@ -143,6 +147,8 @@ class BaseXLATrainer:
         seen_tokens = 0
         step_tracker = xm.RateTracker()
         token_tracker = xm.RateTracker()
+        self.examples = []
+        self.grads = []
 
         # run loop
         xm.mark_step()
@@ -232,16 +238,26 @@ class BaseXLATrainer:
 
                 # optimizer examples
                 if constants.XLA_MAIN() and not self.debug and hasattr(optimizer, "get_examples"):
-                    example_list = optimizer.get_examples().detach().cpu().tolist()
-                    wandb.log(
-                        {
-                            "example_weights":
-                            wandb.Table(
-                                columns=[str(i) for i in range(len(example_list))],
-                                data=[example_list]
-                            )
-                        }
-                    )
+                    out = optimizer.get_examples().detach().cpu().tolist()
+                    example_list, grad_list = out[0], out[1]
+                    self.examples.append(example_list)
+                    self.grads.append(grad_list)
+                    
+                    if curr_step % 100 == 0:
+                        wandb.log(
+                            {
+                                "example_weights":
+                                LongTable(
+                                    columns=[str(i) for i in range(len(example_list))],
+                                    data=self.examples
+                                ),
+                                "example_grads":
+                                LongTable(
+                                    columns=[str(i) for i in range(len(grad_list))],
+                                    data=self.grads
+                                )
+                            }
+                        )
 
                 # print update
                 msg = [
