@@ -232,7 +232,7 @@ class BaseXLATrainer:
 
                 # optimizer examples
                 if hasattr(optimizer, "get_examples"):
-                    example_list = optimizer.get_examples()[None].detach().cpu().tolist()
+                    example_list = optimizer.get_examples().detach().cpu().tolist()
                     wandb.log(
                         {
                             "example_weights":
