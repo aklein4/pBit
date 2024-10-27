@@ -230,6 +230,17 @@ class BaseXLATrainer:
                         else:
                             self.log[k] = v
 
+                # optimizer examples
+                if hasattr(optimizer, "get_examples"):
+                    wandb.log(
+                        {
+                            "example_weights":
+                            wandb.Table(
+                                data=optimizer.get_examples()[None].detach().cpu().tolist()
+                            )
+                        }
+                    )
+
                 # print update
                 msg = [
                     f"Step {curr_step}",

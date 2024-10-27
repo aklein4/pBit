@@ -31,6 +31,8 @@ class AdamW(torch.optim.Optimizer):
             Adam's epsilon for numerical stability.
         weight_decay (`float`, *optional*, defaults to 0.0):
             Decoupled weight decay to apply.
+        num_examples_per_parameter (`int`, *optional*, defaults to 1):
+            The number of examples per parameter for vizualization purposes.
     """
 
     def __init__(
@@ -43,6 +45,7 @@ class AdamW(torch.optim.Optimizer):
         betas: Tuple[float, float] = (0.9, 0.999),
         eps: float = 1e-6,
         weight_decay: float = 0.0,
+        num_examples_per_parameter: int = 1,
     ):
         if final_lr > lr:
             raise ValueError(f"Invalid final learning rate: {final_lr} - should be <= {lr}")
@@ -61,6 +64,7 @@ class AdamW(torch.optim.Optimizer):
             "betas": betas,
             "eps": eps,
             "weight_decay": weight_decay,
+            "num_examples_per_parameter": num_examples_per_parameter,
         }
         
         super().__init__(params, defaults)
@@ -78,6 +82,11 @@ class AdamW(torch.optim.Optimizer):
         return {
             "lr": lr,
         }
+    
+
+    @torch.no_grad()
+    def get_examples(self):
+        return self.examples
 
 
     @torch.no_grad()
@@ -91,6 +100,8 @@ class AdamW(torch.optim.Optimizer):
         loss = None
         if closure is not None:
             loss = closure()
+
+        examples = []
 
         for group in self.param_groups:
             for p in group["params"]:
@@ -109,6 +120,13 @@ class AdamW(torch.optim.Optimizer):
                     state["exp_avg"] = torch.zeros_like(p)
                     # Exponential moving average of squared gradient values
                     state["exp_avg_sq"] = torch.zeros_like(p)
+
+                    state["example_inds"] = torch.randint(
+                        0, grad.numel(), (group["num_examples_per_parameter"],),
+                        dtype=torch.long, device=grad.device
+                    )
+
+                examples.append(p.view(-1)[state["example_inds"]])
 
                 # update group's lr
                 group["lr"] = get_cosine_schedule_with_warmup_lr(
@@ -145,5 +163,7 @@ class AdamW(torch.optim.Optimizer):
                 # Add weight decay at the end (fixed version)
                 if group["weight_decay"] > 0.0:
                     p.add_(p, alpha=(-group["lr"] * group["weight_decay"]))
+
+        self.examples = torch.cat(examples, dim=0)
 
         return loss

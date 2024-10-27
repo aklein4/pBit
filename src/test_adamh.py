@@ -47,6 +47,8 @@ def main():
         print(lr_w)
         d_h = adamh.get_log_info()
         print(d_h)
+
+        print(adamw.get_examples())
     
 
 if __name__ == '__main__':
