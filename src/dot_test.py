@@ -5,40 +5,74 @@ from tqdm import tqdm
 import matplotlib.pyplot as plt
 
 
+K = 4
+
+
 def main():
     
     zs = []
-    for n in tqdm(range(2, 2048, 100)):
+    for n in tqdm(range(2, 2000, 100)):
 
-        x = np.random.randn(1000, n)
+        x = np.random.randn(K, n)
         x /= np.linalg.norm(x, axis=-1, keepdims=True)
         
-        z = np.abs((x @ x.T))
-        z /= z.sum(axis=0)
+        z = 1 + (x @ x.T)
+        z /= z.sum(axis=-1)
 
-        z = np.diagonal(z).mean()
+        d = np.diag(z).copy()
+        np.fill_diagonal(z, 0)
 
-        zs.append(z)
+        print(d)
+        print(z)
 
-    plt.plot(range(2, 2048, 100), zs, label="linear")
+    plt.plot(range(2, 2000, 100), zs)
+    plt.show()
+    return
 
     ds = []
     zs = []
-    for n in tqdm(range(2, 64)):
+    for n in tqdm(range(2, 8)):
         ds.append(n + n**2)
 
-        x = np.random.randn(1000, n)
+        x = np.random.randn(K, n)
         x /= np.linalg.norm(x, axis=-1, keepdims=True)
 
         y = (x[:, :, None] @ x[:, None, :])
-        x = np.concatenate([x * 2, y.reshape(1000, -1)], axis=-1)
+        x = np.concatenate([np.sqrt(2) * x, y.reshape(K, -1)], axis=-1)
 
-        z = np.abs(x @ x.T)
+        z = 1 + (x @ x.T)
+        
+        sm = z.sum(axis=0)
         z /= z.sum(axis=0)
+        # print(" === ")
+        # print(z)
 
-        z = np.diagonal(z).mean()
+        # ===
 
-        zs.append(z)
+        x2 = np.random.randn(K, n)
+        x2 /= np.linalg.norm(x2, axis=-1, keepdims=True)
+
+        y = (x2[:, :, None] @ x2[:, None, :])
+        x2 = np.concatenate([np.sqrt(2) * x2, y.reshape(K, -1)], axis=-1)
+
+        z2 = 1 + (x2 @ x.T)
+        
+        z2 /= (z2.sum(axis=0) + 3)
+        # print("")
+        # print(z2)
+
+        out = np.abs(z - z2)
+        # print("")
+        # print(out)
+        out /= out.sum(axis=0)
+
+        
+        
+        
+
+        out = np.diagonal(out).mean()
+
+        zs.append(out)
 
     plt.plot(ds, zs, label="taylor")
 
