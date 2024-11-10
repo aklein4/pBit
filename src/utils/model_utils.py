@@ -255,16 +255,18 @@ class GluMlp(nn.Module):
     def __init__(self, hidden_size, mlp_size, activation):
         super().__init__()
 
-        self.w_gate = nn.Linear(hidden_size, mlp_size, bias=False)
-        self.w_value = nn.Linear(hidden_size, mlp_size, bias=False)
+        self.w_in = FusedLinear(
+            hidden_size,
+            [mlp_size]*2,
+            bias=False
+        )
         self.w_out = nn.Linear(mlp_size, hidden_size, bias=False)
 
         self.activation = ACT2FN[activation]
     
 
     def forward(self, hidden_states):
-        gate = self.w_gate(hidden_states)
-        value = self.w_value(hidden_states)
+        gate, value = self.w_in(hidden_states)
 
         h = self.activation(gate) * value
 

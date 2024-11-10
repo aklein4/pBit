@@ -188,7 +188,7 @@ class BaseXLATrainer:
                     )
 
                 # scale results for accumulation
-                # reductions are done by averaging across devices, summing across mini batches
+                # reductions are done by averaging across devices, summing across mini batches (division makes this an average)
                 for k, v in results.items():
                     results[k] = v / num_mini_batches
 
@@ -237,27 +237,27 @@ class BaseXLATrainer:
                             self.log[k] = v
 
                 # optimizer examples
-                if constants.XLA_MAIN() and not self.debug and hasattr(optimizer, "get_examples"):
-                    out = optimizer.get_examples().detach().cpu().tolist()
-                    example_list, grad_list = out[0], out[1]
-                    self.examples.append(example_list)
-                    self.grads.append(grad_list)
+                # if constants.XLA_MAIN() and not self.debug and hasattr(optimizer, "get_examples"):
+                #     out = optimizer.get_examples().detach().cpu().tolist()
+                #     example_list, grad_list = out[0], out[1]
+                #     self.examples.append(example_list)
+                #     self.grads.append(grad_list)
                     
-                    if curr_step % 100 == 0:
-                        wandb.log(
-                            {
-                                "example_weights":
-                                LongTable(
-                                    columns=[str(i) for i in range(len(example_list))],
-                                    data=self.examples
-                                ),
-                                "example_grads":
-                                LongTable(
-                                    columns=[str(i) for i in range(len(grad_list))],
-                                    data=self.grads
-                                )
-                            }
-                        )
+                #     if curr_step % 100 == 0:
+                #         wandb.log(
+                #             {
+                #                 "example_weights":
+                #                 LongTable(
+                #                     columns=[str(i) for i in range(len(example_list))],
+                #                     data=self.examples
+                #                 ),
+                #                 "example_grads":
+                #                 LongTable(
+                #                     columns=[str(i) for i in range(len(grad_list))],
+                #                     data=self.grads
+                #                 )
+                #             }
+                #         )
 
                 # print update
                 msg = [

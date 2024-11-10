@@ -5,25 +5,23 @@ from tqdm import tqdm
 import matplotlib.pyplot as plt
 
 
-K = 4
+K = 1000
 
 
 def main():
     
     zs = []
-    for n in tqdm(range(2, 2000, 100)):
+    for n in tqdm(range(2, 4000, 200)):
 
         x = np.random.randn(K, n)
         x /= np.linalg.norm(x, axis=-1, keepdims=True)
         
-        z = 1 + (x @ x.T)
-        z /= z.sum(axis=-1)
+        y = np.random.randn(K, n)
+        y /= np.linalg.norm(y, axis=-1, keepdims=True)
 
-        d = np.diag(z).copy()
-        np.fill_diagonal(z, 0)
-
-        print(d)
-        print(z)
+        z = ((x @ x.T)**2) * n / (1 + (2*n/2000))
+        
+        zs.append(z.mean())
 
     plt.plot(range(2, 2000, 100), zs)
     plt.show()
