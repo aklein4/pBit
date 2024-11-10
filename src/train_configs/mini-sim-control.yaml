@@ -1,4 +1,4 @@
-trainer_type: XLALmTrainer
+trainer_type: XLASimTrainer
 
 collator_type: packed
 dataset: fineweb-2024-packed
