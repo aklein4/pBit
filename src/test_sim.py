@@ -8,7 +8,7 @@ from utils.config_utils import load_model_config
 import utils.constants as constants
 
 
-MODEL_CONFIG = 'mini-base'
+MODEL_CONFIG = 'med-base'
 
 
 def main():
@@ -22,6 +22,7 @@ def main():
     assert tokenizer.eos_token_id == constants.GPT2_EOS_TOKEN
 
     x = tokenizer(["Hello, my dog is cute", "His dog is cute too", "All dogs are cute"], return_tensors="pt", padding="max_length", max_length=16).input_ids
+    x = x[:, :4]
 
     print("loading model...")
     config = load_model_config(MODEL_CONFIG)

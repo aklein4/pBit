@@ -1,0 +1,30 @@
+trainer_type: XLASimTrainer
+
+collator_type: packed
+dataset: fineweb-2024-packed
+stream_dataset: true
+
+sequence_length: 512
+
+bs: 1024
+mini_bs: 16
+
+checkpoint_interval: 5000
+save_optimizer: true
+
+optimizer_type: adamw
+optimizer_kwargs:
+
+    num_warmup_steps: 500
+    num_training_steps: 20000
+
+    lr: 0.0003
+    final_lr: 0.00003
+
+    betas: [0.9, 0.95] # [0.9, 0.95]
+    eps: 0.00000001
+    weight_decay: 0.1
+
+    num_examples_per_parameter: 2
+
+w_sim: 0.01
