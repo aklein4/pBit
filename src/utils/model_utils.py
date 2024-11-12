@@ -246,16 +246,17 @@ class ZeroAttention(nn.Module):
 
         # apply non-linearity
         attn_weights = attn_weights.exp() - 1
-        
+        attn_weights = attn_weights / (1e-5 + torch.sqrt(attn_weights.pow(2).sum(dim=-1, keepdim=True)))
+
         # get output
         attn_output = torch.matmul(attn_weights, value_states)
         attn_output = attn_output.transpose(1, 2)
         
         # apply layer norm
-        attn_output = F.layer_norm(attn_output + self.b, attn_output.shape[-1:])
+        # attn_output = F.normalize(attn_output + self.b, p=2, dim=-1) * np.sqrt(self.head_dim)
         attn_output = attn_output.reshape(bsz, q_len, self.qkv_size)
 
-        return self.O(attn_output * self.affine)
+        return self.O(attn_output) #  * self.affine)
 
 
 class RotaryEmbedding(nn.Module):
