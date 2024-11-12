@@ -209,6 +209,7 @@ class ZeroAttention(nn.Module):
         self.QKV = FusedLinear(hidden_size, [self.qkv_size] * 3, bias=True)
         self.O = nn.Linear(self.qkv_size, hidden_size, bias=False)
 
+        self.b = nn.Parameter(torch.randn(1, 1, self.num_heads, self.head_dim))
         self.affine = nn.Parameter(torch.ones(1, 1, self.qkv_size))
 
 
@@ -251,9 +252,7 @@ class ZeroAttention(nn.Module):
         attn_output = attn_output.transpose(1, 2)
         
         # apply layer norm
-        print(attn_output.shape)
-        attn_output = F.layer_norm(attn_output, attn_output.shape[-1:])
-
+        attn_output = F.layer_norm(attn_output + self.b, attn_output.shape[-1:])
         attn_output = attn_output.reshape(bsz, q_len, self.qkv_size)
 
         return self.O(attn_output * self.affine)
