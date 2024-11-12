@@ -240,12 +240,13 @@ class ZeroAttention(nn.Module):
             key_states, value_states = past_key_value.update(key_states, value_states, self.layer_idx)
 
         # dot product and mask
-        attn_weights = torch.matmul(query_states, key_states.transpose(2, 3) / np.sqrt(self.head_dim)) 
+        attn_weights = torch.matmul(query_states, key_states.transpose(2, 3) / self.head_dim)
         if attention_mask is not None:
             attn_weights = attn_weights * torch.exp(attention_mask) # zero where -inf
 
         # apply non-linearity
         attn_weights = attn_weights.exp() - 1
+        print(attn_weights[0,:,:,-1].std())
 
         # get output
         attn_output = torch.matmul(attn_weights, value_states)
