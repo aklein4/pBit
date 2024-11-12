@@ -246,8 +246,6 @@ class ZeroAttention(nn.Module):
 
         # apply non-linearity
         attn_weights = attn_weights.exp() - 1
-        print(attn_weights[0,:,:,-1].std())
-
         # get output
         attn_output = torch.matmul(attn_weights, value_states)
         attn_output = attn_output.transpose(1, 2)
