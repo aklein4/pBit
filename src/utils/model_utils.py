@@ -251,6 +251,7 @@ class ZeroAttention(nn.Module):
         attn_output = attn_output.transpose(1, 2)
         
         # apply layer norm
+        print(attn_output.shape)
         attn_output = F.layer_norm(attn_output, attn_output.shape[-1:])
 
         attn_output = attn_output.reshape(bsz, q_len, self.qkv_size)
