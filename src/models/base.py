@@ -12,6 +12,7 @@ from transformers.activations import ACT2FN
 from models.xla import XLAConfig, XLAModel
 from utils.model_utils import (
     RotaryAttention,
+    ZeroAttention,
     GluMlp
 )
 import utils.constants as constants
@@ -58,6 +59,7 @@ class BaseConfig(XLAConfig):
         rope_fraction=None,
         rope_base=None,
         ignore_segment_ids=None,
+        zero_attention=None,
         *args,
         **kwargs,
     ):
@@ -78,6 +80,8 @@ class BaseConfig(XLAConfig):
 
         self.ignore_segment_ids = ignore_segment_ids
 
+        self.zero_attention = zero_attention
+
         super().__init__(*args, **kwargs)
 
 
@@ -89,7 +93,10 @@ class BaseLayer(nn.Module):
         self.attn_layernorm = nn.LayerNorm(config.hidden_size, eps=config.norm_eps)
         self.mlp_layernorm = nn.LayerNorm(config.hidden_size, eps=config.norm_eps)
 
-        self.attn = RotaryAttention(
+        assert config.zero_attention is not None
+        attn_type = ZeroAttention if config.zero_attention else RotaryAttention
+
+        self.attn = attn_type(
             config.hidden_size,
             config.attention_head_size,
             config.num_attention_heads,

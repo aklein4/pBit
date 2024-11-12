@@ -179,6 +179,85 @@ class RotaryAttention(nn.Module):
         return self.O(attn_output)
 
 
+class ZeroAttention(nn.Module):
+
+    def __init__(
+        self,
+        hidden_size,
+        attention_head_size,
+        num_attention_heads,
+        rope_fraction,
+        max_sequence_length,
+        rope_base,
+        layer_idx,
+    ):
+        super().__init__()
+
+        self.layer_idx = layer_idx
+
+        self.hidden_size = hidden_size
+        self.num_heads = num_attention_heads
+        self.head_dim = attention_head_size
+        self.qkv_size = self.num_heads * self.head_dim
+
+        self.rope = RotaryEmbedding(
+            self.head_dim, rope_fraction,
+            max_sequence_length,
+            rope_base,
+        )
+
+        self.QKV = FusedLinear(hidden_size, [self.qkv_size] * 3, bias=True)
+        self.O = nn.Linear(self.qkv_size, hidden_size, bias=False)
+
+        self.affine = nn.Parameter(torch.ones(1, 1, self.qkv_size))
+
+
+    def forward(
+        self,
+        hidden_states,
+        position_ids=None,
+        attention_mask=None,
+        past_key_value=None,
+    ):
+        # get shapes
+        bsz, q_len, _ = hidden_states.shape
+
+        # get qkv
+        query_states, key_states, value_states = self.QKV(hidden_states)
+
+        # reshape qkv
+        query_states = query_states.view(bsz, -1, self.num_heads, self.head_dim).transpose(1, 2)
+        key_states = key_states.view(bsz, -1, self.num_heads, self.head_dim).transpose(1, 2)
+        value_states = value_states.view(bsz, -1, self.num_heads, self.head_dim).transpose(1, 2)
+
+        # apply rotary embedding
+        query_states = self.rope(query_states, position_ids)
+        key_states = self.rope(key_states, position_ids)
+
+        # update/apply cache
+        if past_key_value is not None:
+            key_states, value_states = past_key_value.update(key_states, value_states, self.layer_idx)
+
+        # dot product and mask
+        attn_weights = torch.matmul(query_states, key_states.transpose(2, 3) / np.sqrt(self.head_dim)) 
+        if attention_mask is not None:
+            attn_weights = attn_weights * torch.exp(attention_mask) # zero where -inf
+
+        # apply non-linearity
+        attn_weights = attn_weights.exp() - 1
+
+        # get output
+        attn_output = torch.matmul(attn_weights, value_states)
+        attn_output = attn_output.transpose(1, 2)
+        
+        # apply layer norm
+        attn_output = F.layer_norm(attn_output, attn_output.shape[-1:])
+
+        attn_output = attn_output.reshape(bsz, q_len, self.qkv_size)
+
+        return self.O(attn_output * self.affine)
+
+
 class RotaryEmbedding(nn.Module):
 
     def __init__(self, total_dim, frac, max_position_embeddings, base, position_scale=1):
