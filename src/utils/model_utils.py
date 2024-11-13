@@ -212,7 +212,7 @@ class ZeroAttention(nn.Module):
         alpha = torch.zeros(1, 1, 1, 1)
         self.register_buffer('alpha', alpha, persistent=True)
 
-        self.b = nn.Parameter(torch.zeros(1, self.num_heads, 1, 1))
+        self.b = nn.Parameter(torch.randn(1, self.num_heads, 1, 1))
         self.out_b = nn.Parameter(torch.zeros(1, 1, self.qkv_size))
         self.affine = nn.Parameter(torch.ones(1, 1, self.qkv_size))
 
