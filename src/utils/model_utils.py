@@ -209,8 +209,8 @@ class ZeroAttention(nn.Module):
         self.QKV = FusedLinear(hidden_size, [self.qkv_size] * 3, bias=True)
         self.O = nn.Linear(self.qkv_size, hidden_size, bias=False)
 
-        self.b = nn.Parameter(torch.randn(1, 1, self.num_heads, self.head_dim))
-        self.affine = nn.Parameter(torch.ones(1, 1, self.qkv_size))
+        self.b = nn.Parameter(torch.zeros(1, self.num_heads, 1, 1))
+        # self.affine = nn.Parameter(torch.ones(1, 1, self.qkv_size))
 
 
     def forward(
@@ -246,18 +246,21 @@ class ZeroAttention(nn.Module):
 
         # apply non-linearity
         attn_weights = F.logsigmoid(-attn_weights).pow(2) - (np.log(2)**2) + attn_weights/100
+        attn_weights = attn_weights / (1e-5 + torch.sqrt(F.elu(self.b)+1 + attn_weights.pow(2).sum(dim=-1, keepdim=True)))
+
         # attn_weights = attn_weights.exp() - 1
         # attn_weights = attn_weights / (1e-5 + torch.sqrt(attn_weights.pow(2).sum(dim=-1, keepdim=True)))
+
 
         # get output
         attn_output = torch.matmul(attn_weights, value_states)
         attn_output = attn_output.transpose(1, 2)
-        
+
         # apply layer norm
-        attn_output = F.normalize(attn_output + self.b, p=2, dim=-1) * np.sqrt(self.head_dim)
+        # attn_output = F.normalize(attn_output + self.b, p=2, dim=-1) * np.sqrt(self.head_dim)
         attn_output = attn_output.reshape(bsz, q_len, self.qkv_size)
 
-        return self.O(attn_output) * self.affine
+        return self.O(attn_output) # * self.affine
 
 
 class RotaryEmbedding(nn.Module):
