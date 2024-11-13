@@ -289,7 +289,7 @@ class BaseLmModel(XLAModel):
         if self.zero_attention:
             for m in self.model.modules():
                 if not isinstance(m, ZeroAttention):
-                    pass
+                    continue
 
                 m.alpha.fill_(min(1.0, step / self.attention_decay_steps))
 
