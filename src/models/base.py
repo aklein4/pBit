@@ -60,6 +60,7 @@ class BaseConfig(XLAConfig):
         rope_base=None,
         ignore_segment_ids=None,
         zero_attention=None,
+        attention_decay_steps=None,
         *args,
         **kwargs,
     ):
@@ -81,6 +82,7 @@ class BaseConfig(XLAConfig):
         self.ignore_segment_ids = ignore_segment_ids
 
         self.zero_attention = zero_attention
+        self.attention_decay_steps = attention_decay_steps
 
         super().__init__(*args, **kwargs)
 
@@ -217,6 +219,9 @@ class BaseLmModel(XLAModel):
         # Initialize weights and apply final processing
         self.post_init()
 
+        self.zero_attention = config.zero_attention
+        self.attention_decay_steps = config.attention_decay_steps
+
 
     def _get_attention_mask(
         self,
@@ -278,3 +283,13 @@ class BaseLmModel(XLAModel):
         lm_logits = F.log_softmax(lm_logits, dim=-1)
 
         return lm_logits
+    
+
+    def set_training_step(self, step):
+        if self.zero_attention:
+            for m in self.model.modules():
+                if not isinstance(m, ZeroAttention):
+                    pass
+
+                m.alpha.fill_(min(1.0, step / self.attention_decay_steps))
+

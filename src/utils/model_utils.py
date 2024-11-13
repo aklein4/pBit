@@ -209,8 +209,12 @@ class ZeroAttention(nn.Module):
         self.QKV = FusedLinear(hidden_size, [self.qkv_size] * 3, bias=True)
         self.O = nn.Linear(self.qkv_size, hidden_size, bias=False)
 
+        alpha = torch.zeros(1, 1, 1, 1)
+        self.register_buffer('alpha', alpha, persistent=True)
+
         self.b = nn.Parameter(torch.zeros(1, self.num_heads, 1, 1))
-        # self.affine = nn.Parameter(torch.ones(1, 1, self.qkv_size))
+        self.out_b = nn.Parameter(torch.zeros(1, 1, self.qkv_size))
+        self.affine = nn.Parameter(torch.ones(1, 1, self.qkv_size))
 
 
     def forward(
@@ -241,26 +245,25 @@ class ZeroAttention(nn.Module):
 
         # dot product and mask
         attn_weights = torch.matmul(query_states, key_states.transpose(2, 3) / self.head_dim)
-        if attention_mask is not None:
-            attn_weights = attn_weights * torch.exp(attention_mask) # zero where -inf
 
         # apply non-linearity
-        attn_weights = F.logsigmoid(-attn_weights).pow(2) - (np.log(2)**2) + attn_weights/100
-        attn_weights = attn_weights / (1e-5 + torch.sqrt(F.elu(self.b)+1 + attn_weights.pow(2).sum(dim=-1, keepdim=True)))
+        attn_weights = F.logsigmoid(-attn_weights).pow(2) - self.alpha * (np.log(2)**2) + attn_weights/100
 
         # attn_weights = attn_weights.exp() - 1
         # attn_weights = attn_weights / (1e-5 + torch.sqrt(attn_weights.pow(2).sum(dim=-1, keepdim=True)))
 
+        if attention_mask is not None:
+            attn_weights = attn_weights * torch.exp(attention_mask) # zero where -inf
 
         # get output
         attn_output = torch.matmul(attn_weights, value_states)
         attn_output = attn_output.transpose(1, 2)
 
         # apply layer norm
-        # attn_output = F.normalize(attn_output + self.b, p=2, dim=-1) * np.sqrt(self.head_dim)
+        attn_output = F.normalize(attn_output + self.b, p=2, dim=-1) * np.sqrt(self.head_dim)
         attn_output = attn_output.reshape(bsz, q_len, self.qkv_size)
 
-        return self.O(attn_output) # * self.affine
+        return self.O((attn_output * self.affine) + self.out_b)
 
 
 class RotaryEmbedding(nn.Module):

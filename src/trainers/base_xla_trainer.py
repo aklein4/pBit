@@ -156,6 +156,9 @@ class BaseXLATrainer:
         for batch in loader:
             # batch should be tuple of tensors, each with the same batch size
 
+            # prepare the model
+            model.set_training_step(curr_step)
+
             # prepare minibatches
             mini_batches = []
             prev_n_x = None

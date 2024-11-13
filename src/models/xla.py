@@ -100,3 +100,7 @@ class XLAModel(PreTrainedModel):
             return
 
         super().init_weights()
+
+    
+    def set_training_step(self, step):
+        pass

@@ -24,3 +24,4 @@ ignore_segment_ids: false
 gradient_checkpointing: false
 
 zero_attention: true
+attention_decay_steps: 5000
