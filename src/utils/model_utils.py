@@ -259,9 +259,6 @@ class ZeroAttention(nn.Module):
             dim=-1
         ) * (attn_weights + 1 - self.alpha)
 
-        if attention_mask is not None:
-            attn_weights = attn_weights * torch.exp(attention_mask) # zero where -inf
-
         # get output
         attn_output = torch.matmul(attn_weights, value_states)
         attn_output = attn_output.transpose(1, 2)
