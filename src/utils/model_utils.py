@@ -212,8 +212,9 @@ class ZeroAttention(nn.Module):
         alpha = torch.zeros(1, 1, 1, 1)
         self.register_buffer('alpha', alpha, persistent=True)
 
-        self.b = nn.Parameter(torch.randn(1, 1, self.num_heads, self.head_dim))
-        
+        # self.b = nn.Parameter(torch.randn(1, 1, self.num_heads, self.head_dim))
+        self.b = nn.Parameter(torch.zeros(1, self.num_heads, 1, 1))
+
         self.out_b = nn.Parameter(torch.zeros(1, 1, self.qkv_size))
         self.affine = nn.Parameter(torch.ones(1, 1, self.qkv_size))
 
@@ -248,8 +249,7 @@ class ZeroAttention(nn.Module):
         attn_weights = torch.matmul(query_states, key_states.transpose(2, 3) / self.head_dim)
 
         # apply non-linearity
-        # attn_weights = F.logsigmoid(-attn_weights).pow(2) - self.alpha * (np.log(2)**2) + attn_weights/100
-        attn_weights = attn_weights.pow(2)
+        attn_weights = F.logsigmoid(-attn_weights).pow(2) - self.alpha * (np.log(2)**2) + attn_weights/100
 
         # attn_weights = attn_weights.exp() - 1
         # attn_weights = attn_weights / (1e-5 + torch.sqrt(attn_weights.pow(2).sum(dim=-1, keepdim=True)))
@@ -257,7 +257,7 @@ class ZeroAttention(nn.Module):
         if attention_mask is not None:
             attn_weights = attn_weights * torch.exp(attention_mask) # zero where -inf
 
-        attn_weights = attn_weights / (1 + attn_weights.sum(dim=-1, keepdim=True))
+        attn_weights = attn_weights / torch.sqrt(1e-5 + F.softplus(self.b) + attn_weights.pow(2).sum(dim=-1, keepdim=True))
 
         # get output
         attn_output = torch.matmul(attn_weights, value_states)
