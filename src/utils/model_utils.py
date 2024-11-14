@@ -248,7 +248,8 @@ class ZeroAttention(nn.Module):
         attn_weights = torch.matmul(query_states, key_states.transpose(2, 3) / self.head_dim)
 
         # apply non-linearity
-        attn_weights = F.logsigmoid(-attn_weights).pow(2) - self.alpha * (np.log(2)**2) + attn_weights/100
+        # attn_weights = F.logsigmoid(-attn_weights).pow(2) - self.alpha * (np.log(2)**2) + attn_weights/100
+        attn_weights = attn_weights + (1 - self.alpha)
 
         # attn_weights = attn_weights.exp() - 1
         # attn_weights = attn_weights / (1e-5 + torch.sqrt(attn_weights.pow(2).sum(dim=-1, keepdim=True)))
