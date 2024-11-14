@@ -257,10 +257,11 @@ class ZeroAttention(nn.Module):
         if attention_mask is not None:
             attn_weights = attn_weights * torch.exp(attention_mask) # zero where -inf
 
-        attn_weights = attn_weights / torch.sqrt(1e-5 + F.softplus(self.b) + attn_weights.pow(2).sum(dim=-1, keepdim=True))
+        
 
         # get output
         attn_output = torch.matmul(attn_weights, value_states)
+        attn_output = attn_output / torch.sqrt(1e-5 + F.softplus(self.b) + attn_weights.pow(2).sum(dim=-1, keepdim=True))
         attn_output = attn_output.transpose(1, 2)
 
         # apply layer norm
