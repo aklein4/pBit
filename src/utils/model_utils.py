@@ -212,9 +212,8 @@ class ZeroAttention(nn.Module):
         alpha = torch.zeros(1, 1, 1, 1)
         self.register_buffer('alpha', alpha, persistent=True)
 
-        # self.b = nn.Parameter(torch.randn(1, 1, self.num_heads, self.head_dim))
-        self.b = nn.Parameter(torch.zeros(1, self.num_heads, 1, 1))
-
+        self.b = nn.Parameter(torch.randn(1, 1, self.num_heads, self.head_dim))
+        
         self.out_b = nn.Parameter(torch.zeros(1, 1, self.qkv_size))
         self.affine = nn.Parameter(torch.ones(1, 1, self.qkv_size))
 
@@ -257,18 +256,15 @@ class ZeroAttention(nn.Module):
         if attention_mask is not None:
             attn_weights = attn_weights * torch.exp(attention_mask) # zero where -inf
 
-        
-
         # get output
         attn_output = torch.matmul(attn_weights, value_states)
-        attn_output = attn_output / torch.sqrt(1e-5 + F.softplus(self.b) + attn_weights.pow(2).sum(dim=-1, keepdim=True))
         attn_output = attn_output.transpose(1, 2)
 
         # apply layer norm
-        # attn_output = F.normalize(attn_output + self.b, p=2, dim=-1) * np.sqrt(self.head_dim)
+        attn_output = F.normalize(attn_output + self.b, p=2, dim=-1) * np.sqrt(self.head_dim)
         attn_output = attn_output.reshape(bsz, q_len, self.qkv_size)
 
-        return self.O(attn_output) # self.O((attn_output * self.affine) + self.out_b)
+        return self.O((attn_output * self.affine) + self.out_b)
 
 
 class RotaryEmbedding(nn.Module):
