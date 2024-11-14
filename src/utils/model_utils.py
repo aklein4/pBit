@@ -254,11 +254,10 @@ class ZeroAttention(nn.Module):
         # attn_weights = attn_weights.exp() - 1
         # attn_weights = attn_weights / (1e-5 + torch.sqrt(attn_weights.pow(2).sum(dim=-1, keepdim=True)))
 
-        # upcast attention to fp32
         attn_weights = nn.functional.softmax(
             attn_weights if attention_mask is None else attn_weights + attention_mask,
-            dtype=torch.float32, dim=-1
-        ).to(query_states.dtype) * attn_weights
+            dim=-1
+        ) * (attn_weights + 1 - self.alpha)
 
         if attention_mask is not None:
             attn_weights = attn_weights * torch.exp(attention_mask) # zero where -inf
