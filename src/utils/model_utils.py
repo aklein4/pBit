@@ -259,6 +259,19 @@ class ZeroAttention(nn.Module):
             dim=-1
         ) * (attn_weights + 1 - self.alpha)
 
+        if self.layer_idx == 16:
+            import matplotlib.pyplot as plt
+
+            check = attn_weights[0,0].clone()
+            check = torch.where(torch.triu(torch.ones_like(check).bool(), diagonal=1), torch.full_like(check, float("nan")), check)
+
+            plt.hist(check.detach().cpu().numpy().flatten(), bins=50)
+            plt.show()
+
+            # plt.matshow(attn_weights[0, 0].detach().cpu().numpy())
+            # plt.colorbar()
+            # plt.show()
+
         # get output
         attn_output = torch.matmul(attn_weights, value_states)
         attn_output = attn_output.transpose(1, 2)

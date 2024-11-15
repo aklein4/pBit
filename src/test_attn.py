@@ -7,9 +7,9 @@ import utils.constants as constants
 
 
 PROJECT = 'ZeroAttention'
-NAME = 'med-control'
+NAME = 'med-gelu'
 
-CHECKPOINT = 15000
+CHECKPOINT = 5000
 
 
 def main():
