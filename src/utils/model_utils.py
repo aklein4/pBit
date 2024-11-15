@@ -168,8 +168,44 @@ class RotaryAttention(nn.Module):
         if attention_mask is not None:
             attn_weights = attn_weights + attention_mask
 
+        # if self.layer_idx == 16:
+        #     import matplotlib.pyplot as plt
+
+        #     q_normed = query_states.clone() # F.normalize(query_states, p=2, dim=-1)
+        #     k_normed = key_states.clone() # F.normalize(key_states, p=2, dim=-1)
+
+        #     check = torch.matmul(q_normed, k_normed.transpose(2, 3) / np.sqrt(self.head_dim))
+
+        #     check = check[0,0]
+        #     check = torch.where(torch.triu(torch.ones_like(check).bool(), diagonal=1), torch.full_like(check, float("nan")), check)
+
+        #     plt.hist(check.detach().cpu().numpy().flatten(), bins=50)
+        #     plt.show()
+
+
         # upcast attention to fp32
+        raw = attn_weights.clone()
         attn_weights = nn.functional.softmax(attn_weights, dtype=torch.float32, dim=-1).to(query_states.dtype)
+
+        if self.layer_idx == 16:
+            import matplotlib.pyplot as plt
+
+            # check = attn_weights[0,0].clone()
+            # plt.matshow(check.clip(max=0.1).detach().cpu().numpy())
+            # plt.colorbar()
+
+            check = torch.where(attn_weights == 0, torch.full_like(attn_weights, float('nan')), attn_weights)
+            print(check[0].nanmedian(dim=-1)[0]) # /raw[0].exp().sum(dim=-1)) * torch.arange(1, q_len+1)[None])
+
+            # print(check)
+            raw = torch.where(torch.isneginf(raw), torch.full_like(raw, float('nan')), raw)
+
+            plt.hist(raw[0,0].detach().cpu().numpy().flatten(), bins=50)
+            # plt.hist(check_2.abs().log10().detach().cpu().numpy().flatten(), bins=50, alpha=0.5, color='red', density=True)
+            # plt.colorbar()
+            plt.show()
+
+
 
         # get output
         attn_output = torch.matmul(attn_weights, value_states)
@@ -212,10 +248,8 @@ class ZeroAttention(nn.Module):
         alpha = torch.zeros(1, 1, 1, 1)
         self.register_buffer('alpha', alpha, persistent=True)
 
-        self.b = nn.Parameter(torch.randn(1, 1, self.num_heads, self.head_dim))
-        
-        self.out_b = nn.Parameter(torch.zeros(1, 1, self.qkv_size))
-        self.affine = nn.Parameter(torch.ones(1, 1, self.qkv_size))
+        self.b = nn.Parameter(torch.randn(1, 1, self.qkv_size))
+        self.norm = nn.GroupNorm(self.num_heads, self.qkv_size)
 
 
     def forward(
@@ -246,41 +280,24 @@ class ZeroAttention(nn.Module):
 
         # dot product and mask
         attn_weights = torch.matmul(query_states, key_states.transpose(2, 3) / self.head_dim)
-
-        # apply non-linearity
-        # attn_weights = F.logsigmoid(-attn_weights).pow(2) - self.alpha * (np.log(2)**2) + attn_weights/100
-        # attn_weights = attn_weights # + (1 - self.alpha)
-
-        # attn_weights = attn_weights.exp() - 1
-        # attn_weights = attn_weights / (1e-5 + torch.sqrt(attn_weights.pow(2).sum(dim=-1, keepdim=True)))
+        if attention_mask is not None:
+            attn_weights = attn_weights + attention_mask
 
         attn_weights = nn.functional.softmax(
-            attn_weights if attention_mask is None else attn_weights + attention_mask,
+            attn_weights,
             dim=-1
-        ) * (attn_weights + 1 - self.alpha)
-
-        if self.layer_idx == 16:
-            import matplotlib.pyplot as plt
-
-            check = attn_weights[0,0].clone()
-            check = torch.where(torch.triu(torch.ones_like(check).bool(), diagonal=1), torch.full_like(check, float("nan")), check)
-
-            plt.hist(check.detach().cpu().numpy().flatten(), bins=50)
-            plt.show()
-
-            # plt.matshow(attn_weights[0, 0].detach().cpu().numpy())
-            # plt.colorbar()
-            # plt.show()
+        ) - self.alpha / torch.exp(attn_weights).sum(dim=-1, keepdim=True)
 
         # get output
         attn_output = torch.matmul(attn_weights, value_states)
         attn_output = attn_output.transpose(1, 2)
 
         # apply layer norm
-        # attn_output = F.normalize(attn_output + self.b, p=2, dim=-1) * np.sqrt(self.head_dim)
         attn_output = attn_output.reshape(bsz, q_len, self.qkv_size)
 
-        return self.O(attn_output) #  * self.affine) + self.out_b)
+        out = self.norm((attn_output + self.b).transpose(1, 2)).transpose(1, 2)
+
+        return self.O(out)
 
 
 class RotaryEmbedding(nn.Module):

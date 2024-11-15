@@ -28,7 +28,7 @@ def main():
 
     x = tokenizer(
         [
-            """D&D departs from traditional wargaming by allowing each player to create their own character to play instead of a military formation."""
+            """D&D departs from traditional wargaming by allowing each player to create their own character to play instead of a military formation. These characters embark upon imaginary adventures within a fantasy setting. A Dungeon Master guides the story and the players interact with the setting. Together, they solve dilemmas, engage in battles, and gather treasure and knowledge. In the process, the characters earn experience points in order to rise in levels, and become increasingly powerful over a series of sessions.""",
         ],
         return_tensors="pt", padding=True
     ).input_ids
