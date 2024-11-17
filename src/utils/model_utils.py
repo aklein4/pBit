@@ -182,30 +182,8 @@ class RotaryAttention(nn.Module):
         #     plt.hist(check.detach().cpu().numpy().flatten(), bins=50)
         #     plt.show()
 
-
         # upcast attention to fp32
-        raw = attn_weights.clone()
         attn_weights = nn.functional.softmax(attn_weights, dtype=torch.float32, dim=-1).to(query_states.dtype)
-
-        if self.layer_idx == 16:
-            import matplotlib.pyplot as plt
-
-            # check = attn_weights[0,0].clone()
-            # plt.matshow(check.clip(max=0.1).detach().cpu().numpy())
-            # plt.colorbar()
-
-            check = torch.where(attn_weights == 0, torch.full_like(attn_weights, float('nan')), attn_weights)
-            print(check[0].nanmedian(dim=-1)[0]) # /raw[0].exp().sum(dim=-1)) * torch.arange(1, q_len+1)[None])
-
-            # print(check)
-            raw = torch.where(torch.isneginf(raw), torch.full_like(raw, float('nan')), raw)
-
-            plt.hist(raw[0,0].detach().cpu().numpy().flatten(), bins=50)
-            # plt.hist(check_2.abs().log10().detach().cpu().numpy().flatten(), bins=50, alpha=0.5, color='red', density=True)
-            # plt.colorbar()
-            plt.show()
-
-
 
         # get output
         attn_output = torch.matmul(attn_weights, value_states)
