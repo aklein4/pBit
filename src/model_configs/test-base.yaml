@@ -24,4 +24,4 @@ ignore_segment_ids: false
 
 gradient_checkpointing: false
 
-zero_attention: true
+zero_attention: false
