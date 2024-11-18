@@ -1,0 +1,26 @@
+
+model_type: base
+architectures: [
+    BaseLmModel
+]
+
+max_sequence_length: 1024
+
+hidden_size: 1024
+mlp_size: 3072
+
+attention_head_size: 64
+num_attention_heads: 16
+
+num_layers: 12
+
+hidden_act: silu
+norm_eps: 0.00001
+
+rope_fraction: 1
+rope_base: 10000
+
+ignore_segment_ids: false
+gradient_checkpointing: false
+
+zero_attention: false

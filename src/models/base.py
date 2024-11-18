@@ -142,11 +142,13 @@ class BaseLayer(nn.Module):
 
 class BaseTransformer(nn.Module):
 
+    layer_type = BaseLayer
+
     def __init__(self, config: BaseConfig):
         super().__init__()
 
         self.layers = nn.ModuleList(
-            [BaseLayer(config, layer_idx) for layer_idx in range(config.num_layers)]
+            [self.layer_type(config, layer_idx) for layer_idx in range(config.num_layers)]
         )
         self.norm = nn.LayerNorm(config.hidden_size, eps=config.norm_eps)
 
