@@ -25,7 +25,7 @@ class XLASheepTrainer(XLALmTrainer):
     def train_step(self, model, x, seg_ids):
         results = super().train_step(model, x, seg_ids)
 
-        results.kl = model.get_kl.mean()
+        results.kl = model.get_kl().mean()
         results.sparse_loss = self.get_sparse_loss(model, x, seg_ids)
 
         true_kl = (results.sparse_loss - results.lm_loss).detach()
