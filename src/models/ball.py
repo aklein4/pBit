@@ -32,6 +32,12 @@ def layer_forward(self, x):
     return F.layer_norm(x, self.normalized_shape, weight=scale, bias=bias, eps=self.eps)
 
 
+def emb_forward(self, x):
+    out = nn.Embedding.forward(self, x)
+
+    return F.normalize(out, p=2, dim=-1) * (out.shape[-1]**0.5)
+
+
 class BallLmModel(BaseLmModel):
 
     def post_init(self):
@@ -62,4 +68,9 @@ class BallLmModel(BaseLmModel):
             forward_method = MethodType(layer_forward, m)
             setattr(m, "forward", forward_method)
 
-        
+        for m in self.modules():
+            if not isinstance(m, nn.Embedding):
+                continue
+
+            forward_method = MethodType(emb_forward, m)
+            setattr(m, "forward", forward_method)

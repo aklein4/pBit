@@ -26,7 +26,7 @@ def main():
 
     print("loading model...")
     config = load_model_config(MODEL_CONFIG)
-    model = BaseLmModel(BaseConfig(**config))
+    model = BallLmModel(BaseConfig(**config))
 
     out = model(x, segment_ids=seg_ids)
     out_noseg = model(x)
