@@ -15,11 +15,11 @@ class XLASheepTrainer(XLALmTrainer):
 
         out = model(x, segment_ids=seg_ids)
         ignore_index = constants.GPT2_PAD_TOKEN
-        loss = loss(out, x, ignore_index)
+        loss_out = loss(out, x, ignore_index)
 
         model.deactivate_sparse()
 
-        return loss
+        return loss_out
 
 
     def train_step(self, model, x, seg_ids):
