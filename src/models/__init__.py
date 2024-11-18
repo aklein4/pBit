@@ -8,16 +8,19 @@ import utils.constants as constants
 
 from models.base import BaseConfig, BaseLmModel
 from models.sim import SimLmModel
+from models.ball import BallLmModel
 
 
 CONFIG_DICT = {
     "base": BaseConfig,
     "sim": BaseConfig,
+    "ball": BaseConfig,
 }
 
 MODEL_DICT = {
     "base": BaseLmModel,
     "sim": SimLmModel,
+    "ball": BallLmModel,
 }
 
 
