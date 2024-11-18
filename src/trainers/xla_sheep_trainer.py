@@ -36,11 +36,13 @@ class XLASheepTrainer(XLALmTrainer):
         else:
             self.inner_step = 0
 
-        results.w_kl = self.w_kl * min(1.0, self.inner_step / self.kl_warmup_steps)
+        w_kl = self.w_kl * min(1.0, self.inner_step / self.kl_warmup_steps)
         results.loss = (
             results.lm_loss +
-            results.w_kl * scaled_kl
+            w_kl * scaled_kl
         )
+
+        results.w_kl = torch.full_like(results.kl, w_kl)
 
         return results
     
