@@ -3,6 +3,7 @@ import torch
 from transformers import AutoTokenizer
 
 from models.base import BaseConfig, BaseLmModel
+from models.ball import BallLmModel
 from utils.config_utils import load_model_config
 import utils.constants as constants
 

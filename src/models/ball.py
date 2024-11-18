@@ -27,9 +27,9 @@ def ball_forward(self, x):
 def layer_forward(self, x):
 
     bias = F.normalize(self.bias, p=2, dim=-1)
-    scale = F.normalize(self.weight, p=2, dim=-1)
+    scale = F.normalize(self.weight, p=2, dim=-1) * (x.shape[-1]**0.5)
 
-    F.layer_norm(x, self.normalized_shape, weight=scale, bias=bias, self.eps)
+    return F.layer_norm(x, self.normalized_shape, weight=scale, bias=bias, eps=self.eps)
 
 
 class BallLmModel(BaseLmModel):
