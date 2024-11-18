@@ -113,21 +113,11 @@ class SheepLinear(nn.Module):
         j = F.normalize(j, p=2, dim=-1, eps=self.eps)
 
         # add sparse components
-        i_abs = i.abs().detach()
-        j_abs = j.abs().detach()
-        i_max = i_abs.max(dim=-1, keepdim=True).values
-        j_max = j_abs.max(dim=-1, keepdim=True).values
-
-        # potentially jank, but fast
-        i_sparse = torch.where(i_abs == i_max, i.sign(), torch.zeros_like(i)).detach()
-        j_sparse = torch.where(j_abs == j_max, j.sign(), torch.zeros_like(j)).detach()
+        i_sparse = (torch.softmax(i.abs() * 1e6, dim=-1) * i.sign()).detach()
+        j_sparse = (torch.softmax(j.abs() * 1e6, dim=-1) * j.sign()).detach()
 
         i = torch.cat([i_sparse, i], dim=0)
         j = torch.cat([j_sparse, j], dim=0)
-
-        # normalize to unit vectors (values can be at most -1 or 1)
-        # i = torch.softmax(i, dim=-1)
-        # j = torch.softmax(j, dim=-1)
 
         # get accesses (sums over all addresses)
         accesses = (i.transpose(-1, -2) @ j).view(2, bs, seq_len, -1)
