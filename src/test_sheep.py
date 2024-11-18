@@ -7,7 +7,7 @@ from utils.config_utils import load_model_config
 import utils.constants as constants
 
 
-MODEL_CONFIG = 'stub-sheep'
+MODEL_CONFIG = 'test-sheep'
 
 
 def main():

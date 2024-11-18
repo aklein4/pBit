@@ -94,56 +94,59 @@ class SheepLinear(nn.Module):
         return out
 
 
-    def inner_forward(self, x, sparse):
+    def inner_forward(self, x):
 
         # modify input (if needed)
         if self.modify_input:
             x = x * self.input_scale + self.input_bias
 
         # get info, separate into i and j
-        bs, seq_len, _ = x.shape
+        bs, seq_len, _ = x.shape        
         i, j = x.chunk(2, dim=-1)
 
         # reshape into addresses
         i = i.view(bs, seq_len, self.num_dicts, self.num_addresses//self.num_dicts, self.address_size)
         j = j.view(bs, seq_len, self.num_dicts, self.num_addresses//self.num_dicts, self.address_size)
 
-        # convert to onehots (with sign)
-        if sparse:
-            i_arg = torch.argmax(i.abs(), dim=-1)
-            j_arg = torch.argmax(j.abs(), dim=-1)
+        # L2 normalize
+        i = F.normalize(i, p=2, dim=-1, eps=self.eps)
+        j = F.normalize(j, p=2, dim=-1, eps=self.eps)
 
-            i_hot = F.one_hot(i_arg, num_classes=self.address_size).to(x.dtype)
-            j_hot = F.one_hot(j_arg, num_classes=self.address_size).to(x.dtype)
+        # add sparse components
+        i_abs = i.abs().detach()
+        j_abs = j.abs().detach()
+        i_max = i_abs.max(dim=-1, keepdim=True).values
+        j_max = j_abs.max(dim=-1, keepdim=True).values
 
-            i = i_hot * i.reshape(-1, self.address_size)[i_arg.view(-1)].sign().view(*i.shape)
-            j = j_hot * j.reshape(-1, self.address_size)[j_arg.view(-1)].sign().view(*j.shape)
+        # potentially jank, but fast
+        i_sparse = torch.where(i_abs == i_max, i.sign(), torch.zeros_like(i)).detach()
+        j_sparse = torch.where(j_abs == j_max, j.sign(), torch.zeros_like(j)).detach()
 
-            i = i.detach()
-            j = j.detach()
+        i = torch.cat([i_sparse, i], dim=0)
+        j = torch.cat([j_sparse, j], dim=0)
 
         # normalize to unit vectors (values can be at most -1 or 1)
-        else:
-            i = F.normalize(i, p=2, dim=-1, eps=self.eps)
-            j = F.normalize(j, p=2, dim=-1, eps=self.eps)
+        # i = torch.softmax(i, dim=-1)
+        # j = torch.softmax(j, dim=-1)
 
         # get accesses (sums over all addresses)
-        accesses = (i.transpose(-1, -2) @ j).view(bs, seq_len, -1)
+        accesses = (i.transpose(-1, -2) @ j).view(2, bs, seq_len, -1)
 
         # linear layer for output
         out = F.linear(accesses, self.weight, self.bias)
-        
+
         # norm the output (in case weird things happen)
-        return self.norm(out)
+        return tuple([v[0] for v in self.norm(out).chunk(2, dim=0)])
     
 
     def forward(self, x):
-        if self.sparse_mode:
-            return self.inner_forward(x, sparse=True)
 
         # get outputs
-        dense_mu = self.inner_forward(x, sparse=False)
-        sparse_mu = self.inner_forward(x, sparse=True)
+        sparse_mu, dense_mu = self.inner_forward(x)
+
+        # sparse mode
+        if self.sparse_mode:
+            return sparse_mu + torch.randn_like(sparse_mu) * torch.exp(self.sparse_log_sigma)
 
         # interpolate between dense and sparse
         sig = torch.sigmoid(self.interp)
@@ -154,12 +157,12 @@ class SheepLinear(nn.Module):
         sparse_sigma = torch.exp(self.sparse_log_sigma)
 
         # calculate and save kl divergence [bs, seq_len]
-        kl = (
-            self.sparse_log_sigma - self.dense_log_sigma +
-            (dense_sigma ** 2 + (dense_mu - sparse_mu) ** 2) / (2 * (sparse_sigma ** 2)) -
+        self.kl_prev = (
+            (self.sparse_log_sigma - self.dense_log_sigma).sum(-1) +
+            (dense_sigma ** 2 / (2 * (sparse_sigma ** 2))).sum(-1) +
+            (((dense_mu - sparse_mu) ** 2) / (2 * (sparse_sigma ** 2))).sum(-1) -
             0.5
         )
-        self.kl_prev = kl.sum(-1)
 
         # reparametrization trick
         return dense_mu + dense_sigma * torch.randn_like(dense_mu)
