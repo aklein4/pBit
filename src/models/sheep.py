@@ -344,13 +344,10 @@ class SheepLmModel(XLAModel):
         self.model = SheepTransformer(config)
 
         # outputs
-        self.lm_head = SheepLinear(
+        self.lm_head = nn.Linear(
             config.hidden_size,
             config.vocab_size,
-            config.sparse_level,
-            config.num_dicts,
-            False,
-            config.norm_eps
+            bias=False,
         )
 
         # for training
