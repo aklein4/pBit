@@ -105,39 +105,28 @@ class SheepLinear(nn.Module):
         i, j = x.chunk(2, dim=-1)
 
         # reshape into addresses
-        i = i.view(bs, seq_len, self.num_dicts, self.num_addresses//self.num_dicts, self.address_size)
-        j = j.view(bs, seq_len, self.num_dicts, self.num_addresses//self.num_dicts, self.address_size)
-
-        log_master_print(" ==== ")
-        log_master_print(f"{i.shape}, {j.shape}")
+        i = i.view(bs*seq_len*self.num_dicts, self.num_addresses//self.num_dicts, self.address_size)
+        j = j.view(bs*seq_len*self.num_dicts, self.num_addresses//self.num_dicts, self.address_size)
 
         # L2 normalize
-        # i = F.normalize(i, p=2, dim=-1, eps=self.eps)
-        # j = F.normalize(j, p=2, dim=-1, eps=self.eps)
+        i = F.normalize(i, p=2, dim=-1, eps=self.eps)
+        j = F.normalize(j, p=2, dim=-1, eps=self.eps)
 
         # add sparse components
-        i_sparse = i.clone() # (torch.softmax(i.abs() * 1e6, dim=-1) * i.sign()).detach()
-        j_sparse = j.clone() # (torch.softmax(j.abs() * 1e6, dim=-1) * j.sign()).detach()
-
-        log_master_print(f"{i_sparse.shape}, {j_sparse.shape}")
+        i_sparse = (torch.softmax(i.abs() * 1e6, dim=-1) * i.sign()).detach()
+        j_sparse = (torch.softmax(j.abs() * 1e6, dim=-1) * j.sign()).detach()
 
         i = torch.cat([i_sparse, i], dim=0)
         j = torch.cat([j_sparse, j], dim=0)
 
-        log_master_print(f"{i.shape}, {j.shape}")
-
         # get accesses (sums over all addresses)
         accesses = torch.bmm(
-            i.transpose(-1, -2).view(-1, i.shape[-1], i.shape[-2]),
-            j.view(-1, *j.shape[-2:])
+            i.transpose(-1, -2),
+            j,
         ).view(2, bs, seq_len, -1)
-
-        log_master_print(accesses.shape)
 
         # linear layer for output
         out = F.linear(accesses, self.weight, self.bias)
-
-        log_master_print(out.shape)
 
         # norm the output (in case weird things happen)
         return tuple([v[0] for v in self.norm(out).chunk(2, dim=0)])
@@ -161,13 +150,12 @@ class SheepLinear(nn.Module):
         sparse_sigma = torch.exp(self.sparse_log_sigma)
 
         # calculate and save kl divergence [bs, seq_len]
-        # self.kl_prev = (
-        #     (self.sparse_log_sigma - self.dense_log_sigma).sum(-1) +
-        #     (dense_sigma ** 2 / (2 * (sparse_sigma ** 2))).sum(-1) +
-        #     (((dense_mu - sparse_mu) ** 2) / (2 * (sparse_sigma ** 2))).sum(-1) -
-        #     0.5
-        # )
-        self.kl_prev = (self.sparse_log_sigma - self.dense_log_sigma).sum(-1)
+        self.kl_prev = (
+            (self.sparse_log_sigma - self.dense_log_sigma).sum(-1) +
+            (dense_sigma ** 2 / (2 * (sparse_sigma ** 2))).sum(-1) +
+            (((dense_mu - sparse_mu) ** 2) / (2 * (sparse_sigma ** 2))).sum(-1) -
+            0.5
+        )
 
         # reparametrization trick
         return dense_mu + dense_sigma * torch.randn_like(dense_mu)
