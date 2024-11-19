@@ -109,7 +109,7 @@ class SheepLinear(nn.Module):
         j = j.view(bs, seq_len, self.num_dicts, self.num_addresses//self.num_dicts, self.address_size)
 
         log_master_print(" ==== ")
-        log_master_print(i.shape, j.shape)
+        log_master_print(f"{i.shape}, {j.shape}")
 
         # L2 normalize
         # i = F.normalize(i, p=2, dim=-1, eps=self.eps)
@@ -119,12 +119,12 @@ class SheepLinear(nn.Module):
         i_sparse = (torch.softmax(i.abs() * 1e6, dim=-1) * i.sign()).detach()
         j_sparse = (torch.softmax(j.abs() * 1e6, dim=-1) * j.sign()).detach()
 
-        log_master_print(i_sparse.shape, j_sparse.shape)
+        log_master_print(f"{i_sparse.shape}, {j_sparse.shape}")
 
         i = torch.cat([i_sparse, i], dim=0)
         j = torch.cat([j_sparse, j], dim=0)
 
-        log_master_print(i.shape, j.shape)
+        log_master_print(f"{i.shape}, {j.shape}")
 
         # get accesses (sums over all addresses)
         accesses = (i.transpose(-1, -2) @ j).view(2, bs, seq_len, -1)
