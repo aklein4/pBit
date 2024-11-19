@@ -158,7 +158,7 @@ class SheepLinear(nn.Module):
         )
 
         # reparametrization trick
-        return dense_mu + dense_sigma * torch.randn_like(dense_mu)
+        return dense_mu # + dense_sigma * torch.randn_like(dense_mu)
 
 
 class SheepAttention(nn.Module):
