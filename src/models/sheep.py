@@ -127,7 +127,10 @@ class SheepLinear(nn.Module):
         log_master_print(f"{i.shape}, {j.shape}")
 
         # get accesses (sums over all addresses)
-        accesses = (i.transpose(-1, -2) @ j).view(2, bs, seq_len, -1)
+        accesses = torch.bmm(
+            i.transpose(-1, -2).view(-1, *i.shape[-2:]),
+            j.view(-1, *j.shape[-2:])
+        ).view(2, bs, seq_len, -1)
 
         log_master_print(accesses.shape)
 
