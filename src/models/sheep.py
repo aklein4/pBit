@@ -158,12 +158,13 @@ class SheepLinear(nn.Module):
         sparse_sigma = torch.exp(self.sparse_log_sigma)
 
         # calculate and save kl divergence [bs, seq_len]
-        self.kl_prev = (
-            (self.sparse_log_sigma - self.dense_log_sigma).sum(-1) +
-            (dense_sigma ** 2 / (2 * (sparse_sigma ** 2))).sum(-1) +
-            (((dense_mu - sparse_mu) ** 2) / (2 * (sparse_sigma ** 2))).sum(-1) -
-            0.5
-        )
+        # self.kl_prev = (
+        #     (self.sparse_log_sigma - self.dense_log_sigma).sum(-1) +
+        #     (dense_sigma ** 2 / (2 * (sparse_sigma ** 2))).sum(-1) +
+        #     (((dense_mu - sparse_mu) ** 2) / (2 * (sparse_sigma ** 2))).sum(-1) -
+        #     0.5
+        # )
+        self.kl_prev = (self.sparse_log_sigma - self.dense_log_sigma).sum(-1)
 
         # reparametrization trick
         return dense_mu + dense_sigma * torch.randn_like(dense_mu)
