@@ -109,15 +109,17 @@ class SheepLinear(nn.Module):
         j = j.view(bs*seq_len*self.num_dicts, self.num_addresses//self.num_dicts, self.address_size)
 
         # L2 normalize
-        i = F.normalize(i, p=2, dim=-1, eps=self.eps)
-        j = F.normalize(j, p=2, dim=-1, eps=self.eps)
+        # i = F.normalize(i, p=2, dim=-1, eps=self.eps)
+        # j = F.normalize(j, p=2, dim=-1, eps=self.eps)
 
         # add sparse components
-        i_sparse = (torch.softmax(i.abs() * 1e6, dim=-1) * i.sign()).detach()
-        j_sparse = (torch.softmax(j.abs() * 1e6, dim=-1) * j.sign()).detach()
+        # i_sparse = (torch.softmax(i.abs() * 1e6, dim=-1) * i.sign()).detach()
+        # j_sparse = (torch.softmax(j.abs() * 1e6, dim=-1) * j.sign()).detach()
 
-        i = torch.cat([i_sparse, i], dim=0)
-        j = torch.cat([j_sparse, j], dim=0)
+        # i = torch.cat([i_sparse, i], dim=0)
+        # j = torch.cat([j_sparse, j], dim=0)
+        i = torch.cat([i, i], dim=0)
+        j = torch.cat([j, j], dim=0)
 
         # get accesses (sums over all addresses)
         accesses = torch.bmm(
@@ -129,15 +131,15 @@ class SheepLinear(nn.Module):
         out = F.linear(accesses, self.weight, self.bias)
 
         # norm the output (in case weird things happen)
-        return tuple([v[0] for v in self.norm(out).chunk(2, dim=0)])
+        # return tuple([v[0] for v in self.norm(out).chunk(2, dim=0)])
+        return tuple([v[0] for v in out.chunk(2, dim=0)])
     
 
     def forward(self, x):
-        self.kl_prev = torch.zeros(x.shape[0], x.shape[1], device=x.device, dtype=x.dtype)
-        return torch.zeros(x.shape[0], x.shape[1], self.out_features, device=x.device, dtype=x.dtype)
 
         # get outputs
         sparse_mu, dense_mu = self.inner_forward(x)
+        return sparse_mu * dense_mu
 
         # sparse mode
         if self.sparse_mode:
