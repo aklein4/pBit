@@ -128,7 +128,7 @@ class SheepLinear(nn.Module):
 
         # get accesses (sums over all addresses)
         accesses = torch.bmm(
-            i.transpose(-1, -2).view(-1, *i.shape[-2:]),
+            i.transpose(-1, -2).view(-1, i.shape[-1], i.shape[-2]),
             j.view(-1, *j.shape[-2:])
         ).view(2, bs, seq_len, -1)
 
