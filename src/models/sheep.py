@@ -116,8 +116,8 @@ class SheepLinear(nn.Module):
         # j = F.normalize(j, p=2, dim=-1, eps=self.eps)
 
         # add sparse components
-        i_sparse = (torch.softmax(i.abs() * 1e6, dim=-1) * i.sign()).detach()
-        j_sparse = (torch.softmax(j.abs() * 1e6, dim=-1) * j.sign()).detach()
+        i_sparse = i.clone() # (torch.softmax(i.abs() * 1e6, dim=-1) * i.sign()).detach()
+        j_sparse = j.clone() # (torch.softmax(j.abs() * 1e6, dim=-1) * j.sign()).detach()
 
         log_master_print(f"{i_sparse.shape}, {j_sparse.shape}")
 
