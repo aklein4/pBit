@@ -133,6 +133,8 @@ class SheepLinear(nn.Module):
     
 
     def forward(self, x):
+        self.kl_prev = torch.zeros(x.shape[0], x.shape[1], device=x.device, dtype=x.dtype)
+        return torch.zeros(x.shape[0], x.shape[1], self.out_features, device=x.device, dtype=x.dtype)
 
         # get outputs
         sparse_mu, dense_mu = self.inner_forward(x)
