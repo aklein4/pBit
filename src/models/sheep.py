@@ -105,8 +105,8 @@ class SheepLinear(nn.Module):
         i, j = x.chunk(2, dim=-1)
 
         # reshape into addresses
-        i = i.view(bs*seq_len*self.num_dicts, self.num_addresses//self.num_dicts, self.address_size)
-        j = j.view(bs*seq_len*self.num_dicts, self.num_addresses//self.num_dicts, self.address_size)
+        i = i.reshape(bs*seq_len*self.num_dicts, self.num_addresses//self.num_dicts, self.address_size)
+        j = j.reshape(bs*seq_len*self.num_dicts, self.num_addresses//self.num_dicts, self.address_size)
 
         # L2 normalize
         # i = F.normalize(i, p=2, dim=-1, eps=self.eps)
@@ -136,6 +136,7 @@ class SheepLinear(nn.Module):
     
 
     def forward(self, x):
+        self.kl_prev = torch.zeros(x.shape[0], x.shape[1], device=x.device, dtype=x.dtype)
 
         # get outputs
         sparse_mu, dense_mu = self.inner_forward(x)
