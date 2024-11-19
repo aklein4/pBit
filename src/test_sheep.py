@@ -7,7 +7,7 @@ from utils.config_utils import load_model_config
 import utils.constants as constants
 
 
-MODEL_CONFIG = 'test-sheep'
+MODEL_CONFIG = 'stub-sheep'
 
 
 def main():
@@ -32,6 +32,16 @@ def main():
     # print(out)
     print(out.shape)
     print(model.get_kl())
+    print(model.get_kl())
+
+    model.activate_sparse()
+    out = model(x, segment_ids=seg_ids)
+    model.deactivate_sparse()
+    print(out.shape)
+    print(model.get_kl())
+
+    out = model(x, segment_ids=seg_ids)
+    print(out.shape)
     print(model.get_kl())
 
 

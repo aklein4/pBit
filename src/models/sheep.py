@@ -14,7 +14,7 @@ from utils.model_utils import (
     RotaryEmbedding,
 )
 import utils.constants as constants
-
+from utils.logging_utils import log_master_print
 
 class SheepConfig(BaseConfig):
 
@@ -108,32 +108,39 @@ class SheepLinear(nn.Module):
         i = i.view(bs, seq_len, self.num_dicts, self.num_addresses//self.num_dicts, self.address_size)
         j = j.view(bs, seq_len, self.num_dicts, self.num_addresses//self.num_dicts, self.address_size)
 
+        log_master_print(" ==== ")
+        log_master_print(i.shape, j.shape)
+
         # L2 normalize
-        i = F.normalize(i, p=2, dim=-1, eps=self.eps)
-        j = F.normalize(j, p=2, dim=-1, eps=self.eps)
+        # i = F.normalize(i, p=2, dim=-1, eps=self.eps)
+        # j = F.normalize(j, p=2, dim=-1, eps=self.eps)
 
         # add sparse components
         i_sparse = (torch.softmax(i.abs() * 1e6, dim=-1) * i.sign()).detach()
         j_sparse = (torch.softmax(j.abs() * 1e6, dim=-1) * j.sign()).detach()
 
+        log_master_print(i_sparse.shape, j_sparse.shape)
+
         i = torch.cat([i_sparse, i], dim=0)
         j = torch.cat([j_sparse, j], dim=0)
+
+        log_master_print(i.shape, j.shape)
 
         # get accesses (sums over all addresses)
         accesses = (i.transpose(-1, -2) @ j).view(2, bs, seq_len, -1)
 
+        log_master_print(accesses.shape)
+
         # linear layer for output
         out = F.linear(accesses, self.weight, self.bias)
+
+        log_master_print(out.shape)
 
         # norm the output (in case weird things happen)
         return tuple([v[0] for v in self.norm(out).chunk(2, dim=0)])
     
 
     def forward(self, x):
-        y = torch.randn(x.shape[0], x.shape[1], self.out_features, device=x.device, dtype=x.dtype)
-        if not self.sparse_mode:
-            self.kl_prev = y.pow(2).sum(-1)
-        return y
 
         # get outputs
         sparse_mu, dense_mu = self.inner_forward(x)
