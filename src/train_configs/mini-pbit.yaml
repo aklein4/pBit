@@ -7,7 +7,7 @@ stream_dataset: true
 sequence_length: 512
 
 bs: 1024
-mini_bs: 16
+mini_bs: 32
 
 checkpoint_interval: 5000
 save_optimizer: false
