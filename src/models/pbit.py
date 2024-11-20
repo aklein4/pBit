@@ -42,7 +42,8 @@ class PBitLinear(nn.Module):
             x = x + self.in_bias
     
         p = torch.sigmoid(self.logits)
-    
+        p = self.logits + (p - self.logits).detach() 
+
         w_mu = self.weight
         w_var = (1-p) * self.weight.pow(2) / (p+1e-7) # p * (1-p) * self.weight.pow(2) * (1/p).pow(2)
 
@@ -55,8 +56,11 @@ class PBitLinear(nn.Module):
     def get_density(self):
         
         expected = torch.sigmoid(self.logits).sum()
+        passthru = self.logits.sum()
 
-        return expected, self.logits.numel()
+        out = passthru + (expected - passthru).detach()
+
+        return out, self.logits.numel()
 
 
 class PBitLmModel(BaseLmModel):
