@@ -1,0 +1,25 @@
+
+model_type: pbit
+architectures: [
+    PBitLmModel
+]
+
+max_sequence_length: 1024
+
+hidden_size: 768
+mlp_size: 2048
+
+attention_head_size: 64
+num_attention_heads: 12
+
+num_layers: 12
+
+hidden_act: silu
+norm_eps: 0.00001
+
+rope_fraction: 1
+rope_base: 10000
+
+ignore_segment_ids: true
+
+gradient_checkpointing: false

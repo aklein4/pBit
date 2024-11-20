@@ -96,7 +96,7 @@ class BaseLayer(nn.Module):
         self.mlp_layernorm = nn.LayerNorm(config.hidden_size, eps=config.norm_eps)
 
         assert config.zero_attention is not None
-        attn_type = ZeroAttention if config.zero_attention else RotaryAttention
+        attn_type = ZeroAttention if (config.zero_attention is not None and config.zero_attention) else RotaryAttention
 
         self.attn = attn_type(
             config.hidden_size,

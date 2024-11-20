@@ -12,7 +12,7 @@ from  utils.training_utils import (
 
 class XLALmTrainer(BaseXLATrainer):
 
-    def train_step(self, model, x, seg_ids):
+    def train_step(self, step, model, x, seg_ids):
 
         out = model(x, segment_ids=seg_ids)
         ignore_index = constants.GPT2_PAD_TOKEN

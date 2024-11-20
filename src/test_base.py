@@ -3,7 +3,7 @@ import torch
 from transformers import AutoTokenizer
 
 from models.base import BaseConfig, BaseLmModel
-from models.ball import BallLmModel
+from models.pbit import PBitLmModel
 from utils.config_utils import load_model_config
 import utils.constants as constants
 
@@ -26,7 +26,7 @@ def main():
 
     print("loading model...")
     config = load_model_config(MODEL_CONFIG)
-    model = BallLmModel(BaseConfig(**config))
+    model = BaseLmModel(BaseConfig(**config))
 
     out = model(x, segment_ids=seg_ids)
     out_noseg = model(x)
@@ -34,7 +34,7 @@ def main():
     # print(out)
     print(out.shape)
     print((out - out_noseg).abs().max().item())
-
+    # print(model.get_density())
 
 if __name__ == '__main__':
 

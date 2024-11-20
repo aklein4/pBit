@@ -10,6 +10,7 @@ from models.base import BaseConfig, BaseLmModel
 from models.sim import SimLmModel
 from models.ball import BallLmModel
 from models.sheep import SheepConfig, SheepLmModel
+from models.pbit import PBitLmModel
 
 
 CONFIG_DICT = {
@@ -17,6 +18,7 @@ CONFIG_DICT = {
     "sim": BaseConfig,
     "ball": BaseConfig,
     "sheep": SheepConfig,
+    "pbit": BaseConfig,
 }
 
 MODEL_DICT = {
@@ -24,6 +26,7 @@ MODEL_DICT = {
     "sim": SimLmModel,
     "ball": BallLmModel,
     "sheep": SheepLmModel,
+    "pbit": PBitLmModel,
 }
 
 

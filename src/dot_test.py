@@ -10,6 +10,16 @@ K = 1000
 
 def main():
     
+    up_bits = 0.1 + (np.random.rand(10000)*0.8)
+    down_bits = 0.1 + (np.random.rand(10000)*0.8)
+
+    mu = (up_bits - down_bits) * 3
+    print(mu.mean(), mu.std())
+    plt.hist(mu, bins=100)
+    plt.show()
+
+    return
+
     zs = []
     for n in tqdm(range(2, 4000, 200)):
 
