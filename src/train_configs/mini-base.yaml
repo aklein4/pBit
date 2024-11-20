@@ -10,7 +10,7 @@ bs: 1024
 mini_bs: 64
 
 checkpoint_interval: 5000
-save_optimizer: true
+save_optimizer: false
 
 optimizer_type: adamw
 optimizer_kwargs:

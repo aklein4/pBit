@@ -109,12 +109,12 @@ class SheepLinear(nn.Module):
         j = j.reshape(bs*seq_len*self.num_dicts, self.num_addresses//self.num_dicts, self.address_size)
 
         # L2 normalize
-        # i = F.normalize(i, p=2, dim=-1, eps=self.eps)
-        # j = F.normalize(j, p=2, dim=-1, eps=self.eps)
+        i = F.normalize(i, p=2, dim=-1, eps=self.eps)
+        j = F.normalize(j, p=2, dim=-1, eps=self.eps)
 
         # add sparse components
-        # i_sparse = (torch.softmax(i.abs() * 1e6, dim=-1) * i.sign()).detach()
-        # j_sparse = (torch.softmax(j.abs() * 1e6, dim=-1) * j.sign()).detach()
+        i_sparse = (torch.softmax(i.abs() * 1e6, dim=-1) * i.sign()).detach()
+        j_sparse = (torch.softmax(j.abs() * 1e6, dim=-1) * j.sign()).detach()
 
         # i = torch.cat([i_sparse, i], dim=0)
         # j = torch.cat([j_sparse, j], dim=0)
@@ -140,7 +140,6 @@ class SheepLinear(nn.Module):
 
         # get outputs
         sparse_mu, dense_mu = self.inner_forward(x)
-        return sparse_mu * dense_mu
 
         # sparse mode
         if self.sparse_mode:
