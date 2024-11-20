@@ -5,5 +5,5 @@ from trainers.xla_pbit_trainer import XLAPBitTrainer
 
 TRAINER_DICT = {
     "XLALmTrainer": XLALmTrainer,
-    "XLAPbitTrainer": XLAPBitTrainer,
+    "XLAPBitTrainer": XLAPBitTrainer,
 }
