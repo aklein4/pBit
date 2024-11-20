@@ -213,6 +213,7 @@ class BaseXLATrainer:
             # # perform a single optimizer step
             xm.optimizer_step(optimizer)
             optimizer.zero_grad(set_to_none=True)
+            model.post_step(curr_step)
 
             # update tracking
             curr_step += 1

@@ -28,7 +28,7 @@ class PBitLinear(nn.Module):
         self.mod_inputs = mod_inputs
 
         self.weight = nn.Parameter(torch.randn(out_features, in_features) / np.sqrt(in_features))
-        self.logits = nn.Parameter(torch.full_like(self.weight, 4.0))
+        self.p = nn.Parameter(torch.ones(out_features, in_features))
 
         self.bias = nn.Parameter(torch.zeros(out_features))
 
@@ -41,11 +41,8 @@ class PBitLinear(nn.Module):
         if self.mod_inputs:
             x = x + self.in_bias
     
-        p = torch.sigmoid(self.logits)
-        p = self.logits + (p - self.logits).detach() 
-
         w_mu = self.weight
-        w_var = (1-p) * self.weight.pow(2) / (p+1e-7) # p * (1-p) * self.weight.pow(2) * (1/p).pow(2)
+        w_var = (1-self.p) * self.weight.pow(2) / self.p # p * (1-p) * self.weight.pow(2) * (1/p).pow(2)
 
         mu = F.linear(x, w_mu, self.bias)
         var = F.linear(x**2, w_var, None)
@@ -54,13 +51,7 @@ class PBitLinear(nn.Module):
 
 
     def get_density(self):
-        
-        expected = torch.sigmoid(self.logits).sum()
-        passthru = self.logits.sum()
-
-        out = passthru + (expected - passthru).detach()
-
-        return out, self.logits.numel()
+        return self.p.sum(), self.p.numel()
 
 
 class PBitLmModel(BaseLmModel):
@@ -98,3 +89,9 @@ class PBitLmModel(BaseLmModel):
         
         return total / count
         
+
+    @torch.no_grad()
+    def post_step(self, step):
+        for m in self.modules():
+            if isinstance(m, PBitLinear):
+                m.p.clamp_(self.config.norm_eps, 1.0)

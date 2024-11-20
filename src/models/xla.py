@@ -104,3 +104,7 @@ class XLAModel(PreTrainedModel):
     
     def set_training_step(self, step):
         pass
+
+
+    def post_step(self, step):
+        pass
