@@ -27,36 +27,54 @@ class PBitLinear(nn.Module):
         self.out_features = out_features
         self.mod_inputs = mod_inputs
 
-        self.weight = nn.Parameter(torch.randn(out_features, in_features) / np.sqrt(in_features))
-        self.logits = nn.Parameter(torch.full_like(self.weight, 4.0))
+        up_p = 0.1 + (torch.rand(out_features, in_features) * 0.8)
+        down_p = 0.1 + (torch.rand(out_features, in_features) * 0.8)
 
-        self.bias = nn.Parameter(torch.zeros(out_features))
+        self.up_bits = nn.Parameter(torch.log(up_p / (1 - up_p)))
+        self.down_bits = nn.Parameter(torch.log(down_p / (1 - down_p)))
+
+        self.out_bias = nn.Parameter(torch.zeros(1, 1, out_features))
+        
+        # analytically found to scale output variance to 1
+        self.out_scale = nn.Parameter(
+            torch.ones(1, 1, out_features) * 3 / np.sqrt(in_features)
+        )
 
         self.in_bias = None
+        self.in_scale = None
         if self.mod_inputs:
             self.in_bias = nn.Parameter(torch.zeros(1, 1, in_features))
+            self.in_scale = nn.Parameter(torch.ones(1, 1, in_features))
 
 
     def forward(self, x):
         if self.mod_inputs:
-            x = x + self.in_bias
+            x = (x * self.in_scale) + self.in_bias
     
-        p = torch.sigmoid(self.logits)
+        up_bits = torch.sigmoid(self.up_bits)
+        down_bits = torch.sigmoid(self.down_bits)
     
-        w_mu = self.weight
-        w_var = (1-p) * self.weight.pow(2) / (p+1e-7) # p * (1-p) * self.weight.pow(2) * (1/p).pow(2)
+        w_mu = up_bits - down_bits
+        w_var = up_bits*(1-up_bits) + down_bits*(1-down_bits)
 
-        mu = F.linear(x, w_mu, self.bias)
+        mu = F.linear(x, w_mu, None)
         var = F.linear(x**2, w_var, None)
 
-        return mu + torch.randn_like(mu) * torch.sqrt(var)
+        y = mu + torch.randn_like(mu) * torch.sqrt(var)
+
+        return (y * self.out_scale) + self.out_bias
 
 
     def get_density(self):
-        
-        expected = torch.sigmoid(self.logits).sum()
+        up_bits = torch.sigmoid(self.up_bits)
+        down_bits = torch.sigmoid(self.down_bits)
 
-        return expected, self.logits.numel()
+        expected = (
+            up_bits * (1-down_bits) +
+            (1-up_bits) * down_bits
+        ).sum()
+
+        return expected, up_bits.numel()
 
 
 class PBitLmModel(BaseLmModel):

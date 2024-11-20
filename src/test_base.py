@@ -26,7 +26,7 @@ def main():
 
     print("loading model...")
     config = load_model_config(MODEL_CONFIG)
-    model = BaseLmModel(BaseConfig(**config))
+    model = PBitLmModel(BaseConfig(**config))
 
     out = model(x, segment_ids=seg_ids)
     out_noseg = model(x)
@@ -34,7 +34,7 @@ def main():
     # print(out)
     print(out.shape)
     print((out - out_noseg).abs().max().item())
-    # print(model.get_density())
+    print(model.get_density())
 
 if __name__ == '__main__':
 
