@@ -21,5 +21,6 @@ rope_fraction: 1
 rope_base: 10000
 
 ignore_segment_ids: true
-
 gradient_checkpointing: false
+
+ease_steps: 15000

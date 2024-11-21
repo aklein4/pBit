@@ -1,7 +1,7 @@
 
 model_type: pbit
 architectures: [
-    BaseLmModel
+    PBitLmModel
 ]
 
 max_sequence_length: 16
@@ -24,4 +24,4 @@ ignore_segment_ids: false
 
 gradient_checkpointing: false
 
-zero_attention: false
+ease_steps: 15000

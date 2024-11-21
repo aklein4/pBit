@@ -7,12 +7,12 @@ import huggingface_hub as hf
 import utils.constants as constants
 
 from models.base import BaseConfig, BaseLmModel
-from models.pbit import PBitLmModel
+from models.pbit import PBitConfig, PBitLmModel
 
 
 CONFIG_DICT = {
     "base": BaseConfig,
-    "pbit": BaseConfig,
+    "pbit": PBitConfig,
 }
 
 MODEL_DICT = {

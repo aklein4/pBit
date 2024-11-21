@@ -27,5 +27,5 @@ optimizer_kwargs:
 
     num_examples_per_parameter: 2
 
-w_density: 5
+w_density: 0
 density_ramp_steps: 15000

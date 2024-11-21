@@ -9,8 +9,25 @@ import numpy as np
 from transformers import PreTrainedModel
 
 from models.base import (
-    BaseLmModel
+    BaseLmModel,
+    BaseConfig
 )
+
+
+class PBitConfig(BaseConfig):
+
+    model_type = 'pbit'
+
+    def __init__(
+        self,
+        ease_steps=None,
+        *args,
+        **kwargs,
+    ):
+
+        self.ease_steps = ease_steps
+
+        super().__init__(*args, **kwargs)
 
 
 class PBitLinear(nn.Module):
@@ -27,31 +44,53 @@ class PBitLinear(nn.Module):
         self.out_features = out_features
         self.mod_inputs = mod_inputs
 
-        self.weight = nn.Parameter(torch.randn(out_features, in_features) / np.sqrt(in_features))
-        self.p = nn.Parameter(torch.ones(out_features, in_features))
+        self.p_up = nn.Parameter(torch.rand(out_features, in_features))
+        self.p_down = nn.Parameter(torch.rand(out_features, in_features))
 
-        self.bias = nn.Parameter(torch.zeros(out_features))
+        self.out_bias = nn.Parameter(torch.zeros(1, 1, out_features))
+        # analytically found to scale output variance to 1
+        self.out_scale = nn.Parameter(
+            torch.ones(1, 1, out_features) * 3 / np.sqrt(in_features)
+        )
 
         self.in_bias = None
+        self.in_scale = None
         if self.mod_inputs:
             self.in_bias = nn.Parameter(torch.zeros(1, 1, in_features))
+            self.in_scale = nn.Parameter(torch.ones(1, 1, in_features))
+
+        self.noise_scale = 0.0
 
 
     def forward(self, x):
         if self.mod_inputs:
-            x = x + self.in_bias
+            x = (x * self.in_scale) + self.in_bias
     
-        w_mu = self.weight
-        w_var = (1-self.p) * self.weight.pow(2) / self.p # p * (1-p) * self.weight.pow(2) * (1/p).pow(2)
+        w_mu = self.p_up - self.p_down
+        w_var = (
+            self.p_up * (1-self.p_up) +
+            self.p_down * (1-self.p_down)
+        )
 
-        mu = F.linear(x, w_mu, self.bias)
+        mu = F.linear(x, w_mu, None)
         var = F.linear(x**2, w_var, None)
 
-        return mu + torch.randn_like(mu) * torch.sqrt(var)
+        y = (
+            mu +
+            self.noise_scale * torch.randn_like(var) * torch.sqrt(var)
+        )
+
+        return (y * self.out_scale) + self.out_bias
 
 
     def get_density(self):
-        return self.p.sum(), self.p.numel()
+
+        expected = (
+            self.p_up * (1-self.p_down) +
+            (1-self.p_up) * self.p_down
+        ).sum()
+
+        return expected, self.p_up.numel()
 
 
 class PBitLmModel(BaseLmModel):
@@ -92,6 +131,9 @@ class PBitLmModel(BaseLmModel):
 
     @torch.no_grad()
     def post_step(self, step):
+        
         for m in self.modules():
             if isinstance(m, PBitLinear):
-                m.p.clamp_(self.config.norm_eps, 1.0)
+                m.p.clamp_(0.0, 1.0)
+
+                m.noise_scale = min(1.0, step/self.config.ease_steps)

@@ -2,6 +2,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from models.pbit import PBitLinear
+
 from trainers.xla_lm_trainer import XLALmTrainer
 
 
@@ -17,6 +19,13 @@ class XLAPBitTrainer(XLALmTrainer):
         results.density_loss = w_density * results.density
         
         results.loss = results.lm_loss + results.density_loss
+
+        noise_scale = None
+        for m in model.modules():
+            if isinstance(m, PBitLinear):
+                noise_scale = m.noise_scale
+        assert noise_scale is not None
+        results.noise_scale = torch.full_like(results.loss, noise_scale)
 
         return results
     
