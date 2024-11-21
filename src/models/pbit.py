@@ -134,6 +134,7 @@ class PBitLmModel(BaseLmModel):
         
         for m in self.modules():
             if isinstance(m, PBitLinear):
-                m.p.clamp_(0.0, 1.0)
+                m.p_up.clamp_(0.0, 1.0)
+                m.p_down.clamp_(0.0, 1.0)
 
                 m.noise_scale = min(1.0, step/self.config.ease_steps)
