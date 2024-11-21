@@ -24,3 +24,4 @@ ignore_segment_ids: true
 gradient_checkpointing: false
 
 ease_steps: 15000
+margin: 0.05

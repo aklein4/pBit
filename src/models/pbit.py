@@ -21,11 +21,13 @@ class PBitConfig(BaseConfig):
     def __init__(
         self,
         ease_steps=None,
+        margin=None,
         *args,
         **kwargs,
     ):
 
         self.ease_steps = ease_steps
+        self.margin = margin
 
         super().__init__(*args, **kwargs)
 
@@ -44,13 +46,14 @@ class PBitLinear(nn.Module):
         self.out_features = out_features
         self.mod_inputs = mod_inputs
 
-        self.p_up = nn.Parameter(torch.rand(out_features, in_features))
-        self.p_down = nn.Parameter(torch.rand(out_features, in_features))
+        self.rescale = np.sqrt(in_features)
+
+        self.p_up = nn.Parameter(torch.rand(out_features, in_features) / self.rescale)
+        self.p_down = nn.Parameter(torch.rand(out_features, in_features) / self.rescale)
 
         self.out_bias = nn.Parameter(torch.zeros(1, 1, out_features))
-        # analytically found to scale output variance to 1
         self.out_scale = nn.Parameter(
-            torch.ones(1, 1, out_features) * 3 / np.sqrt(in_features)
+            torch.ones(1, 1, out_features)
         )
 
         self.in_bias = None
@@ -66,10 +69,16 @@ class PBitLinear(nn.Module):
         if self.mod_inputs:
             x = (x * self.in_scale) + self.in_bias
     
-        w_mu = self.p_up - self.p_down
+        up_scaled = self.p_up * self.rescale
+        down_scaled = self.p_down * self.rescale
+
+        up = up_scaled + (torch.clamp(up_scaled, 0.0, 1.0) - up_scaled).detach()
+        down = down_scaled + (torch.clamp(down_scaled, 0.0, 1.0) - down_scaled).detach()
+
+        w_mu = up - down
         w_var = (
-            self.p_up * (1-self.p_up) +
-            self.p_down * (1-self.p_down)
+            up * (1-up) +
+            down * (1-down)
         )
 
         mu = F.linear(x, w_mu, None)
@@ -79,15 +88,24 @@ class PBitLinear(nn.Module):
             mu +
             self.noise_scale * torch.randn_like(var) * torch.sqrt(var)
         )
+        
+        # analytically found to scale output variance to 1
+        y = y * 3 / self.rescale
 
         return (y * self.out_scale) + self.out_bias
 
 
     def get_density(self):
 
+        up_scaled = self.p_up * self.rescale
+        down_scaled = self.p_down * self.rescale
+
+        up = up_scaled + (torch.clamp(up_scaled, 0.0, 1.0) - up_scaled).detach()
+        down = down_scaled + (torch.clamp(down_scaled, 0.0, 1.0) - down_scaled).detach()
+
         expected = (
-            self.p_up * (1-self.p_down) +
-            (1-self.p_up) * self.p_down
+            up * (1-down) +
+            (1-up) * down
         ).sum()
 
         return expected, self.p_up.numel()
@@ -134,7 +152,7 @@ class PBitLmModel(BaseLmModel):
         
         for m in self.modules():
             if isinstance(m, PBitLinear):
-                m.p_up.clamp_(0.0, 1.0)
-                m.p_down.clamp_(0.0, 1.0)
+                m.p_up.clamp_(-self.config.margin/m.rescale, (1+self.config.margin)/m.rescale)
+                m.p_down.clamp_(-self.config.margin/m.rescale, (1+self.config.margin)/m.rescale)
 
                 m.noise_scale = min(1.0, step/self.config.ease_steps)

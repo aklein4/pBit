@@ -5,20 +5,35 @@ from tqdm import tqdm
 import matplotlib.pyplot as plt
 
 
-K = 1000
+K = 2000
 
 
 def main():
     
-    up_bits = 0.1 + (np.random.rand(10000)*0.8)
-    down_bits = 0.1 + (np.random.rand(10000)*0.8)
+    for sparsity in [0.0, 0.5, 0.9, 0.99, 0.999]:
+        
+        zs = []
+        for n in tqdm(range(200, 2000, 200)):
 
-    mu = (up_bits - down_bits) * 3
-    print(mu.mean(), mu.std())
-    plt.hist(mu, bins=100)
+            x = np.random.randn(K, n)
+            x = x * (np.random.rand(K, n) > sparsity).astype(float)
+            x /= np.linalg.norm(x, axis=-1, keepdims=True)
+            
+            y = np.random.randn(K, n)
+            y = y * (np.random.rand(K, n) > sparsity).astype(float)
+            y /= np.linalg.norm(y, axis=-1, keepdims=True)
+
+            z = ((x @ y.T)**2)
+
+            zs.append(1/z.mean())
+        
+        plt.plot(zs, label=sparsity)
+    
+    plt.legend()
     plt.show()
 
     return
+
 
     zs = []
     for n in tqdm(range(2, 4000, 200)):
