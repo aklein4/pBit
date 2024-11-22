@@ -95,12 +95,7 @@ class PBitLinear(nn.Module):
         # analytically found to keep 1 std
         y = y * 3 / self.rescale
 
-        out = (y * self.out_scale) + self.out_bias
-
-        self.x_prev = x
-        self.y_prev = out
-
-        return out
+        return (y * self.out_scale) + self.out_bias
     
 
     def get_density(self):
@@ -145,30 +140,6 @@ class PBitLmModel(BaseLmModel):
                 count = count + num
         
         return total / count
-    
-
-    def get_xy_finite(self):
-
-        x_finite = None
-        y_finite = None
-
-        for m in self.modules():
-            if isinstance(m, PBitLinear):
-                
-                if x_finite is None:
-                    x_finite = torch.all(m.x_prev.isfinite())
-                else:
-                    x_finite = x_finite and torch.all(m.x_prev.isfinite())
-                
-                if y_finite is None:
-                    y_finite = torch.all(m.y_prev.isfinite())
-                else:
-                    y_finite = y_finite and torch.all(m.y_prev.isfinite())
-                
-                m.prev_x = None
-                m.prev_y = None
-        
-        return x_finite, y_finite
         
 
     @torch.no_grad()

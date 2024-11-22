@@ -80,10 +80,7 @@ class AdamW(torch.optim.Optimizer):
             lr = group["lr"]
 
         return {
-            "lr": lr,
-            "biggest_p": self.biggest_p,
-            "smallest_denom": self.smallest_denom,
-            "grad_finite": self.grad_finite
+            "lr": lr
         }
     
 
@@ -107,10 +104,6 @@ class AdamW(torch.optim.Optimizer):
         examples = []
         grad_examples = []
 
-        biggest_p = None
-        smallest_denom = None
-        grad_finite = None
-
         for group in self.param_groups:
             for p in group["params"]:
                 if p.grad is None:
@@ -119,10 +112,6 @@ class AdamW(torch.optim.Optimizer):
                 if grad.is_sparse:
                     raise RuntimeError("Adam does not support sparse gradients, please consider SparseAdam instead")
 
-                if grad_finite is None:
-                    grad_finite = torch.all(p.grad.isfinite())
-                else:
-                    grad_finite = grad_finite and torch.all(p.grad.isfinite())
                 p.grad.copy_(torch.nan_to_num(p.grad, nan=0, posinf=0, neginf=0))
 
                 state = self.state[p]
@@ -181,16 +170,6 @@ class AdamW(torch.optim.Optimizer):
                     if not hasattr(p, "disable_decay") or not p.disable_decay:
                         p.add_(p, alpha=(-group["lr"] * group["weight_decay"]))
 
-                if biggest_p is None:
-                    biggest_p = p.abs().max()
-                else:
-                    biggest_p = torch.max(biggest_p, p.abs().max())
-
-                if smallest_denom is None:
-                    smallest_denom = denom.min()
-                else:
-                    smallest_denom = torch.min(smallest_denom, denom.min())
-
         self.examples = torch.stack(
             [
                 torch.cat(examples, dim=0),
@@ -198,10 +177,6 @@ class AdamW(torch.optim.Optimizer):
             ],
             dim=0
         )
-
-        self.biggest_p = biggest_p
-        self.smallest_denom = smallest_denom
-        self.grad_finite = grad_finite
 
         return loss
     
