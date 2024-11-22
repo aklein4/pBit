@@ -97,8 +97,8 @@ class PBitLinear(nn.Module):
 
         out = (y * self.out_scale) + self.out_bias
 
-        self.prev_x = x
-        self.prev_y = out
+        self.x_prev = x
+        self.y_prev = out
 
         return out
     
