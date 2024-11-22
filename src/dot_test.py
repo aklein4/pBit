@@ -10,22 +10,22 @@ K = 2000
 
 def main():
     
-    for sparsity in [0.0, 0.5, 0.9, 0.99, 0.999]:
+    for sparsity in [0.0, 0.5, 0.9, 0.95, 0.99]:
         
         zs = []
-        for n in tqdm(range(200, 2000, 200)):
+        for n in tqdm(range(200, 2000, 500)):
 
             x = np.random.randn(K, n)
             x = x * (np.random.rand(K, n) > sparsity).astype(float)
-            x /= np.linalg.norm(x, axis=-1, keepdims=True)
+            x /= (np.linalg.norm(x, axis=-1, keepdims=True) + 1e-5)
             
             y = np.random.randn(K, n)
             y = y * (np.random.rand(K, n) > sparsity).astype(float)
-            y /= np.linalg.norm(y, axis=-1, keepdims=True)
+            y /= (np.linalg.norm(y, axis=-1, keepdims=True) + 1e-5)
 
             z = ((x @ y.T)**2)
 
-            zs.append(1/z.mean())
+            zs.append(1/z.max(-1).mean())
         
         plt.plot(zs, label=sparsity)
     
