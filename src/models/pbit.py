@@ -75,6 +75,9 @@ class PBitLinear(nn.Module):
         up = up_scaled + (torch.clamp(up_scaled, 0.0, 1.0) - up_scaled).detach()
         down = down_scaled + (torch.clamp(down_scaled, 0.0, 1.0) - down_scaled).detach()
 
+        self.tmp_up = up
+        self.tmp_down = down
+
         w_mu = up - down
         w_var = (
             up * (1-up) +
@@ -84,9 +87,14 @@ class PBitLinear(nn.Module):
         mu = F.linear(x, w_mu, None)
         var = F.linear(x**2, w_var, None)
 
+        std = torch.nan_to_num(
+            torch.sqrt(var),
+            nan=0, posinf=0, neginf=0
+        )
+
         y = (
             mu +
-            self.noise_scale * torch.randn_like(var) * torch.sqrt(var)
+            self.noise_scale * torch.randn_like(var) * std
         )
         
         # analytically found to scale output variance to 1
@@ -97,11 +105,11 @@ class PBitLinear(nn.Module):
 
     def get_density(self):
 
-        up_scaled = self.p_up * self.rescale
-        down_scaled = self.p_down * self.rescale
+        up = self.tmp_up
+        down = self.tmp_down
 
-        up = up_scaled + (torch.clamp(up_scaled, 0.0, 1.0) - up_scaled).detach()
-        down = down_scaled + (torch.clamp(down_scaled, 0.0, 1.0) - down_scaled).detach()
+        self.tmp_up = None
+        self.tmp_down = None
 
         expected = (
             up * (1-down) +
