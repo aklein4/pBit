@@ -90,7 +90,7 @@ class PBitLinear(nn.Module):
         std = torch.nan_to_num(
             torch.sqrt(var),
             nan=0, posinf=0, neginf=0
-        )
+        ) + 1e-3
 
         y = (
             mu +
