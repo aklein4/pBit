@@ -82,7 +82,8 @@ class AdamW(torch.optim.Optimizer):
         return {
             "lr": lr,
             "biggest_p": self.biggest_p,
-            "smallest_denom": self.smallest_denom
+            "smallest_denom": self.smallest_denom,
+            "grad_finite": self.grad_finite
         }
     
 
@@ -108,6 +109,7 @@ class AdamW(torch.optim.Optimizer):
 
         biggest_p = None
         smallest_denom = None
+        grad_finite = None
 
         for group in self.param_groups:
             for p in group["params"]:
@@ -116,6 +118,12 @@ class AdamW(torch.optim.Optimizer):
                 grad = p.grad
                 if grad.is_sparse:
                     raise RuntimeError("Adam does not support sparse gradients, please consider SparseAdam instead")
+
+                if grad_finite is None:
+                    grad_finite = torch.all(p.grad.isfinite())
+                else:
+                    grad_finite = grad_finite and torch.all(p.grad.isfinite())
+                p.grad.copy_(torch.nan_to_num(p.grad, nan=0, posinf=0, neginf=0))
 
                 state = self.state[p]
 
@@ -151,7 +159,8 @@ class AdamW(torch.optim.Optimizer):
                 # In-place operations to update the averages at the same time
                 exp_avg.mul_(beta1).add_(grad, alpha=(1.0 - beta1))
                 exp_avg_sq.mul_(beta2).addcmul_(grad, grad, value=1.0 - beta2)
-                denom = exp_avg_sq.sqrt().add_(group["eps"])
+                exp_avg_sq.clamp_(min=group["eps"]**2)
+                denom = exp_avg_sq.sqrt()
 
                 step_size = group["lr"]
                 bias_correction1 = 1.0 - beta1 ** state["step"]
@@ -192,6 +201,7 @@ class AdamW(torch.optim.Optimizer):
 
         self.biggest_p = biggest_p
         self.smallest_denom = smallest_denom
+        self.grad_finite = grad_finite
 
         return loss
     
