@@ -169,7 +169,8 @@ class AdamW(torch.optim.Optimizer):
                 # of the weights to the loss with plain (non-momentum) SGD.
                 # Add weight decay at the end (fixed version)
                 if group["weight_decay"] > 0.0:
-                    p.add_(p, alpha=(-group["lr"] * group["weight_decay"]))
+                    if not hasattr(p, "disable_decay") or not p.disable_decay:
+                        p.add_(p, alpha=(-group["lr"] * group["weight_decay"]))
 
                 if biggest_p is None:
                     biggest_p = p.abs().max()

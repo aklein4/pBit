@@ -27,5 +27,10 @@ class XLAPBitTrainer(XLALmTrainer):
         assert noise_scale is not None
         results.noise_scale = torch.full_like(results.loss, noise_scale)
 
+        x_finite, y_finite = model.get_xy_finite()
+        results.finite_match = (x_finite == y_finite).float()
+        results.x_finite = x_finite
+        results.y_finite = y_finite
+
         return results
     
