@@ -73,7 +73,7 @@ class PBitLinear(nn.Module):
             x = (x * self.in_scale) + self.in_bias
     
         self.w_tmp = self.weight * self.rescale
-        self.w_tmp = self.w_tmp + (torch.clamp(self.w_tmp, 0.0, 1.0) - self.w_tmp).detach()
+        self.w_tmp = self.w_tmp + (torch.clamp(self.w_tmp, -1.0, 1.0) - self.w_tmp).detach()
 
         w_mu = self.w_tmp
         mu = F.linear(x, w_mu, None)
@@ -93,7 +93,7 @@ class PBitLinear(nn.Module):
         )
 
         # analytically found to keep 1 std
-        y = y * 3 / self.rescale
+        y = y * 2 / self.rescale
 
         return (y * self.out_scale) + self.out_bias
     
