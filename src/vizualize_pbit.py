@@ -20,41 +20,148 @@ CHECKPOINT = 25000
 
 def main():
 
-    print("Loading tokenizer...")
-    tokenizer = AutoTokenizer.from_pretrained(constants.GPT2_TOKENIZER, resume_download=None, clean_up_tokenization_spaces=False)
-    tokenizer.add_special_tokens({"pad_token": "[PAD]"})
-    assert len(tokenizer) == constants.GPT2_VOCAB_SIZE
-    assert tokenizer.pad_token_id == constants.GPT2_PAD_TOKEN
-    assert tokenizer.bos_token_id == constants.GPT2_BOS_TOKEN
-    assert tokenizer.eos_token_id == constants.GPT2_EOS_TOKEN
+    # print("Loading tokenizer...")
+    # tokenizer = AutoTokenizer.from_pretrained(constants.GPT2_TOKENIZER, resume_download=None, clean_up_tokenization_spaces=False)
+    # tokenizer.add_special_tokens({"pad_token": "[PAD]"})
+    # assert len(tokenizer) == constants.GPT2_VOCAB_SIZE
+    # assert tokenizer.pad_token_id == constants.GPT2_PAD_TOKEN
+    # assert tokenizer.bos_token_id == constants.GPT2_BOS_TOKEN
+    # assert tokenizer.eos_token_id == constants.GPT2_EOS_TOKEN
 
     print("Loading model...")
     model = load_model('pbit', PROJECT, NAME, CHECKPOINT)
     print("Running...\n")
 
-    m = model.lm_head
-    w = m.weight * m.rescale
-    w = torch.clamp(w, -1.0, 1.0).round()
+    W = []
 
-    # plt.matshow(w.T.detach(), cmap=mpl.colormaps['bwr'])
-    # plt.show()
-    # return
+    for i in tqdm(range(len(model.model.layers))):
+        m = model.model.layers[i].attn.QKV.linear
+        w = m.weight * m.rescale
+        
+        s = model.model.layers[i].attn_layernorm.weight
+        w = w * s[None].sign()
+        
+        w = torch.clamp(w, -1.0, 1.0).round().to(torch.int8)
+        W.append(w)
 
-    counts = (w != 0).float().mean(-1)
-    plt.hist(counts.detach(), bins=100)
+    w = torch.cat(W, dim=0)
+    torch.save(w, 'w_all.pt')
+
+    def get_mat(rand):
+        w = torch.load('w_all.pt').to(torch.int32)
+
+        # w = torch.stack([w, w], dim=1)
+
+        for u in tqdm(w.split(8, dim=-1)):
+            light = {}
+
+            ks = []
+            for ex in u:
+                if rand:
+                    ex[:] = ex[torch.randperm(ex.shape[0])].clone()
+
+                k = str(ex)
+                ks.append(k)
+                k_neg = str(-ex)
+
+                if k not in light.keys():
+                    light[k] = 0
+                    # light[k_neg] = 0
+                light[k] += 1
+                # light[k_neg] += 1
+    
+            sums = u.float().abs().sum(-1)
+            for ind, ex in enumerate(u):
+                k = ks[ind]
+
+                if sums[ind] == 0:
+                    ex[:] = 0
+                else:
+                    ex[:] = light[k]
+
+                # if light[k] >= 10 and sums[ind] > 1:
+                #     # print(k, light[k])
+                #     ex[1] = 2
+                # else:
+                #     ex[1] = -2
+                #     ex[0] = -2
+        
+            c = np.array(list(light.values()))
+            c = c / c.sum()
+            # print(np.log2(c))
+            print((c * (1-np.log2(c))).sum(), 1.58*8)
+
+        print(w.float().mean())
+        l = [f'{v}\n' for v in np.sort(list(light.values()))]
+        with open("counts.txt" if not rand else "counts_rand.txt", 'w') as f:
+            f.writelines(l)        
+
+        return w # w.reshape(w.shape[0]*2, -1)
+
+    real = get_mat(False).float()
+    fake = get_mat(True).float()
+    check = get_mat(True).float()
+
+    real = real / (check+1e-5)
+    fake = fake / (check+1e-5)
+
+    # real = real.log10()
+    real = torch.where(~real.isfinite(), torch.full_like(real, float('nan')), real)
+    # fake = fake.log10()
+    fake = torch.where(~fake.isfinite(), torch.full_like(fake, float('nan')), fake)
+
+    bins = plt.hist(real.flatten(), bins=100, color='b', alpha=0.5)
+    plt.hist(fake.flatten(), bins=bins[1], color='r', alpha=0.5)
     plt.show()
     return
 
-    counts, inds = torch.sort(counts, descending=True)
-    tokens = tokenizer.convert_ids_to_tokens(inds.detach().tolist())
+    m = torch.cat([real.float(), torch.full_like(real[:, :32].float(), float('nan')), fake.float()], dim=-1).T
 
-    for i in range(len(tokens)):
-        print(f"{i}: {tokens[i]} ({counts[i]})")
+    plt.matshow(m)
+    plt.colorbar()
+
+    plt.show()
     return
 
-    with open("token_densities.txt", 'w') as f:
-        f.writelines([f"{inds[i]}: {tokens[i]} ({counts[i]})" for i in range(len(tokens))])
+    # w = torch.stack([w, w], dim=0)
 
+    plt.matshow(light.numpy())
+    plt.show()
+    return
+
+    q, k, v = w.detach().chunk(3, 0)
+
+    m = model.model.layers[6].attn.O
+    o = m.weight * m.rescale
+    o = torch.clamp(o, -1.0, 1.0).detach().round()
+
+    mat = torch.cat([q, k, v, torch.full_like(v, float('nan'))], dim=-1).reshape(v.shape[0]*4, v.shape[-1])
+    plt.matshow(mat)
+    plt.show()
+    return
+
+    print((q != 0).int().sum(-1))
+    print((k != 0).int().sum(-1))
+    print((v != 0).int().sum(-1))
+    print((o != 0).int().sum(0))
+    return
+
+    fig, ax = plt.subplots(1, 4, figsize=[20, 5])
+    ax[0].matshow(-q, cmap=mpl.colormaps['bwr'])
+    ax[1].matshow(-k, cmap=mpl.colormaps['bwr'])
+    ax[2].matshow(-v, cmap=mpl.colormaps['bwr'])
+    ax[3].matshow(-o, cmap=mpl.colormaps['bwr'])
+
+    ax[0].set_title('Q')
+    ax[1].set_title('K')
+    ax[2].set_title('V')
+    ax[3].set_title('O')
+
+    # plt.suptitle("Blue = +1, White = 0, Red = -1")
+    # plt.tight_layout()
+    plt.show()
+    return
+    plt.savefig("sparse_attn_weights.png")
     return
 
     m = model.model.layers[10].attn.QKV.linear
@@ -84,32 +191,6 @@ def main():
     plt.hist(raws, bins=100, color='r', label='raw', alpha=0.5)
     plt.show()
     return
-
-    m = model.model.layers[6].attn.QKV.linear
-    w = m.weight * m.rescale
-    w = torch.clamp(w, -1.0, 1.0)# .round()
-    q, k, v = w.detach().chunk(3, 0)
-
-    m = model.model.layers[6].attn.O
-    o = m.weight * m.rescale
-    o = torch.clamp(o, -1.0, 1.0).round().detach()
-
-    fig, ax = plt.subplots(1, 4, figsize=[20, 5])
-    ax[0].matshow(-q, cmap=mpl.colormaps['bwr'])
-    ax[1].matshow(-k, cmap=mpl.colormaps['bwr'])
-    ax[2].matshow(-v, cmap=mpl.colormaps['bwr'])
-    ax[3].matshow(-o, cmap=mpl.colormaps['bwr'])
-
-    ax[0].set_title('Q')
-    ax[1].set_title('K')
-    ax[2].set_title('V')
-    ax[3].set_title('O')
-
-    # plt.suptitle("Blue = +1, White = 0, Red = -1")
-    # plt.tight_layout()
-    plt.savefig("sparse_attn_weights.png")
-    return
-
 
     q, k, v = w.chunk(3, 0)
     mat = torch.cat([q, k, v, torch.full_like(q, float('nan'))], dim=-1).reshape(q.shape[0]*4, w.shape[-1])
