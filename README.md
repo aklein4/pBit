@@ -2,7 +2,7 @@
 Extreme quantization and sparsity of large language models by representing parameters as probaility distributions.
 
 See the report:
-![https://api.wandb.ai/links/aklein4/f54zip18](https://api.wandb.ai/links/aklein4/f54zip18)
+[https://api.wandb.ai/links/aklein4/f54zip18](https://api.wandb.ai/links/aklein4/f54zip18)
 
 ## TPU VM Setup Instructions
 
