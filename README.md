@@ -8,6 +8,6 @@ See the report:
 
 1. Create VM with version: `tpu-ubuntu2204-base`
 
-2. Run command: `git clone https://github.com/aklein4/stable-hypergrad.git`
+2. Run command: `git clone https://github.com/aklein4/pBit.git`
 
-3. Run command: `cd ~/stable-hypergrad && . setup_vm.sh <HF_TOKEN> <WANDB_TOKEN>`
+3. Run command: `cd ~/pBit && . setup_vm.sh <HF_TOKEN> <WANDB_TOKEN>`
